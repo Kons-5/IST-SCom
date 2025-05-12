@@ -24,35 +24,26 @@ Run this once to build and launch the containers in the background:
 ```bash
 docker-compose up --build -d
 ```
-
 Note that:
 - `--build` forces a rebuild of the Docker image using the Dockerfile (needed only if an alteration to said file was made).
 - `-d` starts the containers in the background. If this flag is not used the terminal will display:
-
   ```bash
   [+] Running 2/2
   ✔ Container chain0   Created                    0.0s
   ✔ Container player0  Created                    0.0s
   Attaching to chain0, player0
   ```
-
 This:
 * Builds the Docker image from the `Dockerfile`
 * Starts all services defined in `docker-compose.yml`  (`player0`, `chain0`)
 * Mounts the source code directory to `/workspace`
 
 ### 2. **Enter a container terminal**
-
 To enter the shell of a specific container:
-
 ```bash
 # Enter the player container
 docker exec -it player0 bash
-```
 
-or
-
-```bash
 # Enter the chain container
 docker exec -it chain0 bash
 ```
@@ -60,16 +51,11 @@ docker exec -it chain0 bash
 ### 3. **Run the program instances in each container**
 
 Inside each container, use Cargo to run each program instance:
-
-#### For a player:
-
 ```bash
+# For a player:
 cargo run --bin host
-```
 
-#### For the chain:
-
-```bash
+# For the chain:
 cargo run --bin blockchain
 ```
 
@@ -77,7 +63,6 @@ cargo run --bin blockchain
 ### 4. **Stop the containers**
 
 To stop the containers, either write:
-
 ```bash
 docker-compose down
 ```
