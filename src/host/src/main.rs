@@ -75,8 +75,15 @@ fn render_html(
     let board = board.unwrap_or("".to_string());
     let shots = shots.unwrap_or("".to_string());
 
-    let path = "host/src/page.html";
-    let html = std::fs::read_to_string(path).unwrap();
+    let path = "page.html";
+    let html = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(e) => {
+            eprintln!("Failed to read {}: {}", path, e);
+            return Html("Internal Server Error".to_string());
+        }
+    };
+    // let html = std::fs::read_to_string(path).unwrap();
     let html = html.replace("{response_html}", &response_html);
     let html = html.replace("{gameid}", &gameid);
     let html = html.replace("{fleetid}", &fleetid);

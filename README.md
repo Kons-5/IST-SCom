@@ -4,13 +4,13 @@ This project follows a modular structure inspired by the [RISC Zero Rust Starter
 
 ```tree
 src/
-├── blockchain/          
-├── fleetcore/           
-├── hello-world/        
-├── host/                
+├── blockchain/
+├── fleetcore/
+├── hello-world/
+├── host/
 ├── methods/
-│   ├── guest/           
-│   └── src/             
+│   ├── guest/
+│   └── src/
 ```
 
 In a RISC Zero project, the terms **methods** and **guest** are part of the framework's architecture that enables **zero-knowledge proofs of computation**.
@@ -53,9 +53,11 @@ docker exec -it chain0 bash
 Inside each container, use Cargo to run each program instance:
 ```bash
 # For a player:
+cd src/host/src
 cargo run --bin host
 
 # For the chain:
+cd src/blockchain/src
 cargo run --bin blockchain
 ```
 
@@ -67,4 +69,3 @@ To stop the containers, either write:
 docker-compose down
 ```
 Or if the `-d` flag was not used, simply use `Ctrl + c` on the terminal `docker-compose up` was invoked
-
