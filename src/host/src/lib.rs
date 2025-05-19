@@ -9,22 +9,21 @@ mod game_actions;
 
 use fleetcore::{Command, CommunicationData};
 use std::error::Error;
-use risc0_zkvm::Receipt;
-use risc0_zkvm::{default_prover, ExecutorEnv};
+use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 
 pub use game_actions::{join_game, fire, report, wave, win};
 
 async fn send_receipt(action: Command, receipt: Receipt) -> String {
     let client = reqwest::Client::new();
     let res = client
-    .post("http://chain:3001/chain")
+    .post("http://chain0:3001/chain")
     .json(&CommunicationData {
         cmd: action,
         receipt,
     })
     .send()
     .await;
-    
+
     match res {
         Ok(response) => response.text().await.unwrap(),
         Err(_) => "Error sending receipt".to_string(),
@@ -75,7 +74,7 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
     .random
     .clone()
     .ok_or_else(|| "You must provide a Random Seed".to_string())?;
-    
+
     let board = idata
     .board
     .as_ref()
@@ -94,7 +93,7 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
             .collect::<Result<Vec<u8>, String>>()
         })
     })??;
-    
+
     Ok((gameid, fleetid, board, random))
 }
 
@@ -113,7 +112,7 @@ fn get_coordinates(x: &Option<String>, y: &Option<String>) -> Result<(u8, u8), S
             Err("Invalid X coordinate".to_string())
         }
     })?;
-    
+
     let y: u8 = y
     .as_ref()
     .ok_or_else(|| "You must provide a Y coordinate".to_string())
@@ -128,7 +127,7 @@ fn get_coordinates(x: &Option<String>, y: &Option<String>) -> Result<(u8, u8), S
             Err("Invalid Y coordinate".to_string())
         }
     })?;
-    
+
     Ok((x, y))
 }
 
@@ -141,7 +140,7 @@ pub fn unmarshal_fire(
     .targetfleet
     .clone()
     .ok_or_else(|| "You must provide a Target Fleet ID".to_string())?;
-    
+
     Ok((gameid, fleetid, board, random, targetfleet, x, y))
 }
 
@@ -161,8 +160,6 @@ pub fn unmarshal_report(
             Err("Report must be either 'Hit' or 'Miss'".to_string())
         }
     })?;
-    
+
     Ok((gameid, fleetid, board, random, report, x, y))
 }
-
-

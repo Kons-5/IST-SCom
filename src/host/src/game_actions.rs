@@ -1,16 +1,25 @@
 // src/game_actions.rs
 
-use fleetcore::{BaseInputs, Command, FireInputs};
+use fleetcore::{BaseInputs, Command, FireInputs, validate_battleship_board};
 use methods::{FIRE_ELF, JOIN_ELF, REPORT_ELF, WAVE_ELF, WIN_ELF};
 
 use crate::{unmarshal_data, unmarshal_fire, unmarshal_report, send_receipt, FormData};
 
+// TODO: Ask about re-import
+use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
+
 pub async fn join_game(idata: FormData) -> String {
-    // This contains the game ID, Fleet ID, the board (?), and the random nonce
+    // This contains the game ID, Fleet ID, the board vector, and the random nonce
     let (gameid, fleetid, board, random) = match unmarshal_data(&idata) {
         Ok(values) => values,
         Err(err) => return err,
     };
+
+    // Check fleet validity
+    // TODO: Ask about ship validity
+    /* if !validate_battleship_board(&board) {
+        return "Invalid fleet layout.".to_string();
+    } */
 
     // Create the zkVM input struct
     let input = BaseInputs {
@@ -20,22 +29,28 @@ pub async fn join_game(idata: FormData) -> String {
         random,
     };
 
-    // Create environment used by the zkVM
-    let env = match ExecutorEnv::builder().write(&input).build() {
-        Ok(env) => env,
-        Err(e) => return format!("Failed to build ExecutorEnv: {}", e),
-    };
+    // Generate Receipt
+    let receipt = generate_join_receipt(&input);
 
-    // Run the zkVM
-    let session = match default_executor_from_elf(env, JOIN_ELF).and_then(|exec| exec.run()) {
-        Ok(session) => session,
-        Err(e) => return format!("Failed to run zkVM: {}", e),
-    };
+    // Send the receipt
+    send_receipt(Command::Join, receipt).await
+}
 
-    // Uncomment the following line when you are ready to send the receipt
-    //send_receipt(Command::Fire, receipt).await
-    // Comment out the following line when you are ready to send the receipt
-    "OK".to_string()
+fn generate_join_receipt(input: &BaseInputs) -> Receipt {
+    // Build the Executor environment
+    // TODO: Ask about unwrap behaviour
+    let env = ExecutorEnv::builder()
+        .write(&input)
+        .unwrap()
+        .build()
+        .unwrap();
+
+    // Get the default prover
+    let prover = default_prover();
+
+    // Run the proof and return the receipt
+    // This is an implicit return
+    prover.prove(env, JOIN_ELF).unwrap().receipt
 }
 
 pub async fn fire(idata: FormData) -> String {

@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use risc0_zkvm::{Receipt, Digest};
 
+pub mod validate;
+pub use validate::validate_battleship_board;
+
 // Struct sent by the rust code for input on the methods join, wave and win
 // The struct is read by the zkvm code and the data is used to generate the output Journal
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
