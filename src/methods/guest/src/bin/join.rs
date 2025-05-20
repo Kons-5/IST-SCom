@@ -1,4 +1,5 @@
 use fleetcore::{BaseInputs, BaseJournal};
+
 use risc0_zkvm::guest::env;
 use risc0_zkvm::sha::Digest;
 use sha2::{Sha256, Digest as ShaDigest};

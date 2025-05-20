@@ -3,35 +3,38 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+use futures::stream::StreamExt;
+use rand::{seq::IteratorRandom, SeedableRng};
+use risc0_zkvm::Digest;
+
+use tokio::sync::broadcast;
+use tokio_stream::wrappers::BroadcastStream;
+
 use axum::{
     extract::Extension,
     response::{sse::Event, Html, IntoResponse},
     routing::{get, post},
     Json, Router,
 };
-use futures::stream::StreamExt;
-use rand::{seq::IteratorRandom, SeedableRng};
-use risc0_zkvm::Digest;
+
+use fleetcore::{BaseJournal, Command, FireJournal, CommunicationData, ReportJournal};
+use methods::{FIRE_ID, JOIN_ID, REPORT_ID, WAVE_ID, WIN_ID};
+
 use std::{
     collections::HashMap,
     error::Error,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
-
-use fleetcore::{BaseJournal, Command, FireJournal, CommunicationData, ReportJournal};
-use methods::{FIRE_ID, JOIN_ID, REPORT_ID, WAVE_ID, WIN_ID};
 
 struct Player {
-    name: String,
-    current_state: Digest,
+    name: String,                       // Player ID
+    current_state: Digest,              // Commitment hash
 }
 struct Game {
-    pmap: HashMap<String, Player>,
-    next_player: Option<String>,
-    next_report: Option<String>,
+    pmap: HashMap<String, Player>,      // All players in the game
+    next_player: Option<String>,        // player allowed to fire
+    next_report: Option<String>,        // player expected to report
 }
 
 #[derive(Clone)]
@@ -133,66 +136,138 @@ fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> String {
         shared.tx.send("Attempting to join game with invalid receipt".to_string()).unwrap();
         return "Could not verify receipt".to_string();
     }
-    // Decode journal for debug purposes
-     let data: BaseJournal = input_data.receipt.journal.decode().unwrap();
+    // Decode journal
+    let data: BaseJournal = input_data.receipt.journal.decode().unwrap();
 
-     // Access game state
-     let mut gmap = shared.gmap.lock().unwrap();
-     let game = gmap.entry(data.gameid.clone()).or_insert(Game {
-         pmap: HashMap::new(),
-         next_player: Some(data.fleet.clone()),
-         next_report: None,
-     });
+    // Access game state
+    // Look up the game by its ID. If it already exists, get a mutable reference to it.
+    // If it doesn't exist, insert a new Game struct
+    let mut gmap = shared.gmap.lock().unwrap();
+    let game = gmap.entry(data.gameid.clone()).or_insert(Game {
+        pmap: HashMap::new(),
+        next_player: Some(data.fleet.clone()),                 // first to join = first to shoot
+        next_report: None,                                     // No shots fired = No player to report
+    });
 
-     // Handle duplicate player
-     if game.pmap.contains_key(&data.fleet) {
-         let msg = format!(
-             "Player \"{}\" is already in game \"{}\". Current players: [{}]",
-             data.fleet,
-             data.gameid,
-             game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
-         );
-         shared.tx.send(msg.clone()).unwrap();
-         return msg;
-     }
+    // Handle duplicate player
+    if game.pmap.contains_key(&data.fleet) {
+        let msg = format!(
+            "Player \"{}\" is already in game \"{}\". Current players: [{}]\n\n\n\
+            \x20",
+            data.fleet,
+            data.gameid,
+            game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
+        );
+        // Check wheter it is expected to register invalid actions
+        // shared.tx.send(msg.clone()).unwrap();
+        return msg;
+    }
 
-     // Add new player (if not duplicate)
-     game.pmap.insert(
-         data.fleet.clone(),
-         Player {
-             name: data.fleet.clone(),
-             current_state: data.board.clone(),
-         },
-     );
+    // Register the player in the game under their fleet ID (if not duplicate)
+    game.pmap.insert(
+        data.fleet.clone(),
+        Player {
+            name: data.fleet.clone(),
+            current_state: data.board.clone(),
+        },
+    );
 
     // Create unified success message
     let players: Vec<String> = game.pmap.keys().cloned().collect();
     let msg = format!(
-         "\
-         \x20 Join receipt decoded:\n\
-         \x20 ▶ Game ID: {}\n\
-         \x20 ▶ Fleet ID: {}\n\
-         \x20 ▶ Commitment Hash: {:?}\n\n\
-         \x20 Player \"{}\" joined game \"{}\".\n\
-         \x20 ▶ Total players: {}\n\
-         \x20 ▶ Current players: [{}]\n\n\n\
-         \x20",
-         data.gameid,
-         data.fleet,
-         data.board,
-         data.fleet,
-         data.gameid,
-         players.len(),
-         players.join(", ")
+        "\
+        \x20 Join receipt decoded:\n\
+        \x20 ▶ Game ID: {}\n\
+        \x20 ▶ Fleet ID: {}\n\
+        \x20 ▶ Commitment Hash: {:?}\n\n\
+        \x20 Player \"{}\" joined game \"{}\".\n\
+        \x20 ▶ Total players: {}\n\
+        \x20 ▶ Current players: [{}]\n\n\n\
+        \x20",
+        data.gameid,
+        data.fleet,
+        data.board,
+        data.fleet,
+        data.gameid,
+        players.len(),
+        players.join(", ")
     );
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+    "OK".to_string()
 }
 
 fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> String {
-     // TO DO:
-    "OK".to_string()
+    if input_data.receipt.verify(FIRE_ID).is_err() {
+        shared.tx.send("Attempting to fire with invalid receipt".to_string()).unwrap();
+        return "Could not verify receipt".to_string();
+    }
+
+    // Decode journal
+    let data: FireJournal = input_data.receipt.journal.decode().unwrap();
+
+    // Confirm game exists
+    let mut gmap = shared.gmap.lock().unwrap();
+     let game = match gmap.get_mut(&data.gameid) {
+         Some(g) => g,
+         None => return format!("Game {} not found\n\n\n\
+         \x20",
+         data.gameid),
+     };
+
+     // Confirm firing player exists and is valid
+     let player = match game.pmap.get(&data.fleet) {
+         Some(p) => p,
+         None => return format!("Player {} not found\n\n\n\
+         \x20",
+         data.fleet),
+     };
+
+     // Validate commitment hash
+     if data.board != player.current_state {
+         return "Fleet commitment does not match recorded state\n\n\n\
+         \x20"
+         .to_string();
+     }
+
+    // Validate player's turn
+    if game.next_player.as_ref() != Some(&data.fleet) {
+        // Check if this player is expected to report
+        if game.next_report.as_ref() == Some(&data.fleet) {
+            return format!(
+                "It's not {}'s turn to fire: you must report the last shot before firing.\n\n\n\
+                \x20",
+                data.fleet
+            );
+        } else {
+            return format!("It's not {}'s turn to fire\n\n\n\
+            \x20",
+            data.fleet);
+        }
+    }
+
+    // Validate target's existence
+    if !game.pmap.contains_key(&data.target) {
+        return format!("Target {} does not exist\n\n\n\
+        \x20",
+        data.target);
+    }
+
+    // Update game state
+    game.next_player = None;
+    game.next_report = Some(data.target.clone());
+
+    let msg = format!(
+        "\
+        \x20 Shots fired!\n\
+        \x20 ▶ {} fired at position {} targeting {} in game {}\n\n\n\
+        \x20",
+        data.fleet, xy_pos(data.pos), data.target, data.gameid
+        );
+
+    let html_msg = msg.replace('\n', "<br>");
+    shared.tx.send(html_msg.clone()).unwrap();
+    msg
 }
 
 fn handle_report(shared: &SharedData, input_data: &CommunicationData) -> String {

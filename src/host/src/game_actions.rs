@@ -1,9 +1,9 @@
 // src/game_actions.rs
 
-use fleetcore::{BaseInputs, Command, FireInputs, validate_battleship_board};
-use methods::{FIRE_ELF, JOIN_ELF, REPORT_ELF, WAVE_ELF, WIN_ELF};
+use crate::{unmarshal_data, unmarshal_fire, unmarshal_report, send_receipt, FormData, generate_receipt};
 
-use crate::{unmarshal_data, unmarshal_fire, unmarshal_report, send_receipt, FormData};
+use fleetcore::{BaseInputs, Command, FireInputs};
+use methods::{FIRE_ELF, JOIN_ELF, REPORT_ELF, WAVE_ELF, WIN_ELF};
 
 // TODO: Ask about re-import
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
@@ -15,12 +15,6 @@ pub async fn join_game(idata: FormData) -> String {
         Err(err) => return err,
     };
 
-    // Check fleet validity
-    // TODO: Ask about ship validity
-    /* if !validate_battleship_board(&board) {
-        return "Invalid fleet layout.".to_string();
-    } */
-
     // Create the zkVM input struct
     let input = BaseInputs {
         gameid,
@@ -30,27 +24,10 @@ pub async fn join_game(idata: FormData) -> String {
     };
 
     // Generate Receipt
-    let receipt = generate_join_receipt(&input);
+    let receipt = generate_receipt(&input, JOIN_ELF);
 
     // Send the receipt
     send_receipt(Command::Join, receipt).await
-}
-
-fn generate_join_receipt(input: &BaseInputs) -> Receipt {
-    // Build the Executor environment
-    // TODO: Ask about unwrap behaviour
-    let env = ExecutorEnv::builder()
-        .write(&input)
-        .unwrap()
-        .build()
-        .unwrap();
-
-    // Get the default prover
-    let prover = default_prover();
-
-    // Run the proof and return the receipt
-    // This is an implicit return
-    prover.prove(env, JOIN_ELF).unwrap().receipt
 }
 
 pub async fn fire(idata: FormData) -> String {
@@ -58,11 +35,22 @@ pub async fn fire(idata: FormData) -> String {
         Ok(values) => values,
         Err(err) => return err,
     };
-    // TO DO: Rebuild the receipt
-    // Uncomment the following line when you are ready to send the receipt
-    //send_receipt(Command::Fire, receipt).await
-    // Comment out the following line when you are ready to send the receipt
-    "OK".to_string()
+
+    // Create the zkVM input struct
+    let input = FireInputs {
+        gameid,
+        fleet: fleetid,
+        board,
+        random,
+        target: targetfleet,
+        pos: y * 10 + x
+    };
+
+    // Generate Receipt
+    let receipt = generate_receipt(&input, FIRE_ELF);
+
+    // Send the receipt
+    send_receipt(Command::Fire, receipt).await
 }
 
 pub async fn report(idata: FormData) -> String {

@@ -3,15 +3,32 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-use percent_encoding;
 use serde::{Deserialize,Serialize};
+use percent_encoding;
 mod game_actions;
 
+use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use fleetcore::{Command, CommunicationData};
 use std::error::Error;
-use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 
 pub use game_actions::{join_game, fire, report, wave, win};
+
+
+fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Receipt {
+    // Build the Executor environment
+    let env = ExecutorEnv::builder()
+        .write(input)
+        .unwrap()
+        .build()
+        .unwrap();
+
+    // Get the default prover
+    let prover = default_prover();
+
+    // Run the proof and return the receipt
+    // This is an implicit return
+    prover.prove(env, elf).unwrap().receipt
+}
 
 async fn send_receipt(action: Command, receipt: Receipt) -> String {
     let client = reqwest::Client::new();

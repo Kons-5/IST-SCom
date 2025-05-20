@@ -24,7 +24,7 @@ impl ShipType {
 }
 */
 
-/// Convert Vec<u8> to 10x10 board and validate it (Check with Prof)
+/*  Convert Vec<u8> to 10x10 board and validate it (Check with Prof)
 pub fn validate_battleship_board(flat_board: &[u8]) -> bool {
     let mut array_board = [[0u8; 10]; 10];
     for i in 0..10 {
@@ -34,3 +34,4 @@ pub fn validate_battleship_board(flat_board: &[u8]) -> bool {
     }
 
 }
+*/
