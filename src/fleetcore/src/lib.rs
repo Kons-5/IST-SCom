@@ -1,3 +1,6 @@
+//! Shared types for zero-knowledge  input/output,
+//! used for communication between the host, guest (zkVM), and verifier.
+
 use serde::{Deserialize, Serialize};
 use risc0_zkvm::{Receipt, Digest};
 
@@ -6,8 +9,12 @@ pub mod validate;
 // Ask about ship layout
 // pub use validate::validate_battleship_board;
 
-// Struct sent by the rust code for input on the methods join, wave and win
-// The struct is read by the zkvm code and the data is used to generate the output Journal
+// -----------------------------------------------------------------------------
+// INPUT STRUCTS
+// -----------------------------------------------------------------------------
+
+/// Input to zkVM programs sent by the rust code for input on the methods join, wave and win
+/// The struct is read by the zkvm code and the data is used to generate the output Journal
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BaseInputs {
     pub gameid: String,
@@ -16,8 +23,8 @@ pub struct BaseInputs {
     pub random: String,
 }
 
-// Struct sent by the rust code for input on the methods fire and report
-// The struct is read by the zkvm code and the data is used to generate the output Journal
+/// Input to zkVM programs sent by the rust code for input on the methods fire and report
+/// The struct is read by the zkvm code and the data is used to generate the output Journal
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FireInputs {
     pub gameid: String,
@@ -28,18 +35,26 @@ pub struct FireInputs {
     pub pos: u8,
 }
 
-// Enum used to define the command that will be sent to the server by the host in the communication packet
+// -----------------------------------------------------------------------------
+// NETWORK COMMUNICATION
+// -----------------------------------------------------------------------------
+
+/// Enum used to define the command that will be sent to the server by the host in the communication packet
 #[derive(Deserialize,Serialize)]
 pub enum Command {Join, Fire, Report, Wave, Win}
 
-// Struct used to specify the packet sent from the client to the blockchain server
+/// Struct used to specify the packet sent from the client to the blockchain server
 #[derive(Deserialize,Serialize)]
 pub struct CommunicationData {
     pub cmd: Command,
     pub receipt: Receipt,
 }
 
-// Struct to specify the  output journal for join, wave and win methods
+// -----------------------------------------------------------------------------
+// JOURNALS
+// -----------------------------------------------------------------------------
+
+/// Struct used to specify the  output journal for join, wave and win methods
 #[derive(Deserialize, PartialEq, Eq, Serialize, Default)]
 pub struct BaseJournal {
     pub gameid: String,
@@ -47,7 +62,7 @@ pub struct BaseJournal {
     pub board: Digest,
 }
 
-// Struct to specify the  output journal for fire method
+/// Struct used to specify the output journal for fire method
 #[derive(Deserialize, PartialEq, Eq, Serialize, Default)]
 pub struct FireJournal {
     pub gameid: String,
@@ -57,7 +72,7 @@ pub struct FireJournal {
     pub pos: u8,
 }
 
-// Struct to specify the  output journal for report method
+/// Struct used to specify the output journal for report method
 #[derive(Deserialize, PartialEq, Eq, Serialize, Default)]
 pub struct ReportJournal {
     pub gameid: String,
