@@ -58,12 +58,22 @@ pub async fn report(idata: FormData) -> String {
         Ok(values) => values,
         Err(err) => return err,
     };
-    // TO DO: Rebuild the receipt
 
-    // Uncomment the following line when you are ready to send the receipt
-    //send_receipt(Command::Fire, receipt).await
-    // Comment out the following line when you are ready to send the receipt
-    "OK".to_string()
+    // Create the zkVM input struct
+    let input = FireInputs {
+        gameid,
+        fleet: fleetid,
+        board,
+        random,
+        target: _report,
+        pos: y * 10 + x
+    };
+
+    // Generate Receipt
+    let receipt = generate_receipt(&input, REPORT_ELF);
+
+    // Send the receipt
+    send_receipt(Command::Report, receipt).await
 }
 
 pub async fn wave(idata: FormData) -> String {
