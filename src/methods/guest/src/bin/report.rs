@@ -4,10 +4,9 @@
 //! and commits both the previous and updated board hashes in the output journal.
 
 use fleetcore::{FireInputs, ReportJournal};
+use guest::hash_board;
 
 use risc0_zkvm::guest::env;
-use risc0_zkvm::sha::Digest;
-use sha2::{Sha256, Digest as ShaDigest};
 
 /// Entry point for the zkVM guest program.
 ///
@@ -25,23 +24,6 @@ fn main() {
 
     env::commit(&journal);
 }
-
-/// Computes a commitment hash for a board and nonce.
-///
-/// # Parameters
-/// - `board`: The fleet
-/// - `nonce`: The secret nonce used in board commitments
-///
-/// # Returns
-/// - `Digest`: The SHA-256 hash of `nonce || board`
-fn hash_board(board: &[u8], nonce: &str) -> Digest {
-    // Commitment hash: Hash(nonce || board)
-    let mut hasher = Sha256::new();
-    hasher.update(nonce.as_bytes());
-    hasher.update(board);
-    Digest::try_from(hasher.finalize().as_slice()).expect("Hash size mismatch")
-}
-
 
 /// Handles a reported "Miss" outcome.
 ///

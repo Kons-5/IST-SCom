@@ -1,16 +1,18 @@
 use fleetcore::{BaseInputs, BaseJournal};
+
 use risc0_zkvm::guest::env;
-//use risc0_zkvm::Digest;
-//use sha2::{Digest as _, Sha256};
+use risc0_zkvm::Digest;
 
 fn main() {
+    let input: BaseInputs = env::read();
 
-    // read the input
-    let _input: BaseInputs = env::read();
+    let digest = hash_board(&input.board, &input.random);
 
-    // TODO: do something with the input
-    let output= BaseJournal::default();
+    let output = BaseJournal {
+        gameid: input.gameid,
+        fleet: input.fleet,
+        board: digest,
+    };
 
-    // write public output to the journal
     env::commit(&output);
 }

@@ -81,12 +81,16 @@ pub async fn wave(idata: FormData) -> String {
         Ok(values) => values,
         Err(err) => return err,
     };
-    // TO DO: Rebuild the receipt
 
-    // Uncomment the following line when you are ready to send the receipt
-    //send_receipt(Command::Fire, receipt).await
-    // Comment out the following line when you are ready to send the receipt
-    "OK".to_string()
+    let input = BaseInputs {
+        gameid,
+        fleet: fleetid,
+        board,
+        random,
+    };
+
+    let receipt = generate_receipt(&input, WAVE_ELF);
+    send_receipt(Command::Wave, receipt).await
 }
 
 pub async fn win(idata: FormData) -> String {

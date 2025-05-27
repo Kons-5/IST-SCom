@@ -68,3 +68,8 @@ To stop the containers, either write:
 docker-compose down
 ```
 Or if the `-d` flag was not used, simply use `Ctrl + c` on the terminal `docker-compose up` was invoked
+
+## Questions
+
+1. A player can wave as long as it has the turn to play, correct? Therefore, even if the player still has the ability to fire, it can still wave their turn.
+2. It's the player responsibility to wave their turn when all their fleet is sunk, correct? (Either way, my proof fails if the player tries to fire with a sunken fleet)
