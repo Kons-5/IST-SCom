@@ -6,7 +6,6 @@ use risc0_zkvm::{Receipt, Digest};
 
 pub mod validate;
 
-// Ask about ship layout
 // pub use validate::validate_battleship_board;
 
 // -----------------------------------------------------------------------------

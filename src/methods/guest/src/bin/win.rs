@@ -8,8 +8,19 @@ fn main() {
     // read the input
     let _input: BaseInputs = env::read();
 
-    // TODO: do something with the input
-    let output= BaseJournal::default();
-    // write public output to the journal
+    // Validate that the fleet is NOT fully sunk
+    assert!(
+        !input.board.is_empty(),
+        "Your fleet is fully sunk — cannot fire"
+    );
+
+    let digest = hash_board(&input.board, &input.random);
+
+    let output = BaseJournal {
+        gameid: input.gameid,
+        fleet: input.fleet,
+        board: digest,
+    };
+
     env::commit(&output);
 }

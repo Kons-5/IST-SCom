@@ -4,7 +4,7 @@
 //! and commits both the previous and updated board hashes in the output journal.
 
 use fleetcore::{FireInputs, ReportJournal};
-use guest::hash_board;
+use proofs::hash_board;
 
 use risc0_zkvm::guest::env;
 

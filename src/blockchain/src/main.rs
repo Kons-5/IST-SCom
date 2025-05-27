@@ -109,8 +109,20 @@ async fn smart_contract(
     }
 }
 
+// -----------------------------------------------------------------------------
+// AUXILIARY FUNCTIONS
+// -----------------------------------------------------------------------------
+//
 fn xy_pos(pos: u8) -> String {
     let x = pos % 10;
     let y = pos / 10;
     format!("{}{}", (x + 65) as char, y)
+}
+
+/// Moves the current player to the back of the queue, without updating next_player.
+fn rotate_player_to_back(game: &mut Game, player_id: &str) {
+    if let Some(pos) = game.player_order.iter().position(|id| id == player_id) {
+        let who = game.player_order.remove(pos);
+        game.player_order.push(who);
+    }
 }

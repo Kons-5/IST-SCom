@@ -73,3 +73,5 @@ Or if the `-d` flag was not used, simply use `Ctrl + c` on the terminal `docker-
 
 1. A player can wave as long as it has the turn to play, correct? Therefore, even if the player still has the ability to fire, it can still wave their turn.
 2. It's the player responsibility to wave their turn when all their fleet is sunk, correct? (Either way, my proof fails if the player tries to fire with a sunken fleet)
+3. We must pass the turn to the next player in a fixed, circular order and that order should loop forever until someone either (1) takes a valid shot (with proof) or (2) claims victory.
+4. What should happen if the player reports a wrong position? Shot positions are public, so it's not possible to hide a wrong shot. Therefore, should the blockchain keep track of every last shot and compare it to the reported one?

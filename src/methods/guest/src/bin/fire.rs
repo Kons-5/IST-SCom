@@ -8,7 +8,7 @@ fn main() {
     // Read the input
     let input: FireInputs = env::read();
 
-    // Validate that the fleet is NOT fully sunk (check)
+    // Validate that the fleet is NOT fully sunk
     assert!(
         !input.board.is_empty(),
         "Your fleet is fully sunk — cannot fire"
