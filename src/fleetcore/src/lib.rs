@@ -1,8 +1,8 @@
 //! Shared types for zero-knowledge  input/output,
 //! used for communication between the host, guest (zkVM), and verifier.
 
+use risc0_zkvm::{Digest, Receipt};
 use serde::{Deserialize, Serialize};
-use risc0_zkvm::{Receipt, Digest};
 
 pub mod validate;
 
@@ -40,14 +40,28 @@ pub struct FireInputs {
 // -----------------------------------------------------------------------------
 
 /// Enum used to define the command that will be sent to the server by the host in the communication packet
-#[derive(Deserialize,Serialize)]
-pub enum Command {Join, Fire, Report, Wave, Win}
+#[derive(Deserialize, Serialize)]
+pub enum Command {
+    Join,
+    Fire,
+    Report,
+    Wave,
+    Win,
+}
 
 /// Struct used to specify the packet sent from the client to the blockchain server
-#[derive(Deserialize,Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct CommunicationData {
     pub cmd: Command,
     pub receipt: Receipt,
+}
+
+/// Wrapper for signed messages.
+#[derive(Serialize, Deserialize)]
+pub struct SignedMessage<T> {
+    pub payload: T,
+    pub signature: Vec<u8>,
+    pub public_key: Vec<u8>,
 }
 
 // -----------------------------------------------------------------------------
@@ -80,5 +94,5 @@ pub struct ReportJournal {
     pub report: String,
     pub pos: u8,
     pub board: Digest,
-    pub next_board: Digest
+    pub next_board: Digest,
 }

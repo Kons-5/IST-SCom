@@ -1,5 +1,5 @@
-use crate::{SharedData, Player, Game, xy_pos};
-use fleetcore::{CommunicationData, FireJournal};
+use crate::{xy_pos, Game, Player, SharedData};
+use fleetcore::{CommunicationData, FireJournal, SignedMessage};
 use methods::FIRE_ID;
 
 use std::{
@@ -11,7 +11,10 @@ use std::{
 
 pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> String {
     if input_data.receipt.verify(FIRE_ID).is_err() {
-        shared.tx.send("Attempting to fire with invalid receipt".to_string()).unwrap();
+        shared
+            .tx
+            .send("Attempting to fire with invalid receipt".to_string())
+            .unwrap();
         return "Could not verify receipt".to_string();
     }
 
@@ -20,27 +23,35 @@ pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> Strin
 
     // Confirm game exists
     let mut gmap = shared.gmap.lock().unwrap();
-     let game = match gmap.get_mut(&data.gameid) {
-         Some(g) => g,
-         None => return format!("Game {} not found\n\n\n\
+    let game = match gmap.get_mut(&data.gameid) {
+        Some(g) => g,
+        None => {
+            return format!(
+                "Game {} not found\n\n\n\
          \x20",
-         data.gameid),
-     };
+                data.gameid
+            )
+        }
+    };
 
-     // Confirm firing player exists and is valid
-     let player = match game.pmap.get(&data.fleet) {
-         Some(p) => p,
-         None => return format!("Player {} not found\n\n\n\
+    // Confirm firing player exists and is valid
+    let player = match game.pmap.get(&data.fleet) {
+        Some(p) => p,
+        None => {
+            return format!(
+                "Player {} not found\n\n\n\
          \x20",
-         data.fleet),
-     };
+                data.fleet
+            )
+        }
+    };
 
-     // Validate commitment hash
-     if data.board != player.current_state {
-         return "Fleet commitment does not match recorded state\n\n\n\
+    // Validate commitment hash
+    if data.board != player.current_state {
+        return "Fleet commitment does not match recorded state\n\n\n\
          \x20"
-         .to_string();
-     }
+            .to_string();
+    }
 
     // Validate player's turn
     if game.next_player.as_ref() != Some(&data.fleet) {
@@ -52,17 +63,21 @@ pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> Strin
                 data.fleet
             );
         } else {
-            return format!("It's not {}'s turn to fire\n\n\n\
+            return format!(
+                "It's not {}'s turn to fire\n\n\n\
             \x20",
-            data.fleet);
+                data.fleet
+            );
         }
     }
 
     // Validate target's existence
     if !game.pmap.contains_key(&data.target) {
-        return format!("Target {} does not exist\n\n\n\
+        return format!(
+            "Target {} does not exist\n\n\n\
         \x20",
-        data.target);
+            data.target
+        );
     }
 
     // Update game state
@@ -74,8 +89,11 @@ pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> Strin
         \x20 Shots fired!\n\
         \x20 ▶ {} fired at position {} targeting {} in game {}\n\n\n\
         \x20",
-        data.fleet, xy_pos(data.pos), data.target, data.gameid
-        );
+        data.fleet,
+        xy_pos(data.pos),
+        data.target,
+        data.gameid
+    );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();

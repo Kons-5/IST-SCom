@@ -1,5 +1,7 @@
 use fleetcore::{BaseInputs, BaseJournal};
 
+use proofs::hash_board;
+
 use risc0_zkvm::guest::env;
 use risc0_zkvm::Digest;
 

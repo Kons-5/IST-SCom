@@ -25,12 +25,15 @@ use std::{
 };
 
 mod states;
-use states::{SharedData, Player, Game};
+use states::{Game, Player, SharedData};
 
 mod handlers;
 use handlers::{handle_fire, handle_join, handle_report, handle_wave, handle_win};
 
-use fleetcore::{Command, CommunicationData};
+mod authenticate;
+use authenticate::verify_signature;
+
+use fleetcore::{Command, CommunicationData, SignedMessage};
 
 #[tokio::main]
 async fn main() {
@@ -98,14 +101,26 @@ async fn logs(Extension(shared): Extension<SharedData>) -> impl IntoResponse {
 
 async fn smart_contract(
     Extension(shared): Extension<SharedData>,
-    Json(input_data): Json<CommunicationData>,
+    Json(signed): Json<SignedMessage<CommunicationData>>,
 ) -> String {
+    let payload_bytes = match serde_json::to_vec(&signed.payload) {
+        Ok(bytes) => bytes,
+        Err(_) => return "Failed to serialize payload".to_string(),
+    };
+
+    if !verify_signature(&payload_bytes, &signed.signature, &signed.public_key) {
+        return "Invalid signature".to_string();
+        // o q fazer mais neste caso?
+    }
+
+    let input_data = &signed.payload;
+
     match input_data.cmd {
-        Command::Join => handle_join(&shared, &input_data),
-        Command::Fire => handle_fire(&shared, &input_data),
-        Command::Report => handle_report(&shared, &input_data),
-        Command::Wave => handle_wave(&shared, &input_data),
-        Command::Win => handle_win(&shared, &input_data),
+        Command::Join => handle_join(&shared, input_data),
+        Command::Fire => handle_fire(&shared, input_data),
+        Command::Report => handle_report(&shared, input_data),
+        Command::Wave => handle_wave(&shared, input_data),
+        Command::Win => handle_win(&shared, input_data),
     }
 }
 

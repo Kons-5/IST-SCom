@@ -1,5 +1,5 @@
-use crate::{SharedData, Player, Game, xy_pos};
-use fleetcore::{CommunicationData, ReportJournal};
+use crate::{xy_pos, Game, Player, SharedData};
+use fleetcore::{CommunicationData, ReportJournal, SignedMessage};
 use methods::REPORT_ID;
 
 use std::{
@@ -8,9 +8,13 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
+
 pub fn handle_report(shared: &SharedData, input_data: &CommunicationData) -> String {
     if input_data.receipt.verify(REPORT_ID).is_err() {
-        shared.tx.send("Attempting to report with invalid receipt".to_string()).unwrap();
+        shared
+            .tx
+            .send("Attempting to report with invalid receipt".to_string())
+            .unwrap();
         return "Could not verify receipt".to_string();
     }
 
