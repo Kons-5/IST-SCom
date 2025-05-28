@@ -4,9 +4,8 @@ use proofs::hash_board;
 use risc0_zkvm::guest::env;
 
 fn main() {
-
-    // read the input
-    let _input: BaseInputs = env::read();
+    // Read the input
+    let input: BaseInputs = env::read();
 
     // Validate that the fleet is NOT fully sunk
     assert!(

@@ -7,9 +7,9 @@ src/
 ├── blockchain/
 ├── fleetcore/
 ├── host/
-├── methods/
-│   ├── guest/
-│   └── src/
+└── methods/
+    ├── guest/
+    └── src/
 ```
 
 In a RISC Zero project, the terms **methods** and **guest** are part of the framework's architecture that enables **zero-knowledge proofs of computation**.
