@@ -26,8 +26,9 @@ pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> Strin
     let mut gmap = shared.gmap.lock().unwrap();
     let game = gmap.entry(data.gameid.clone()).or_insert(Game {
         pmap: HashMap::new(),
-        next_player: Some(data.fleet.clone()), // first to join = first to shoot
-        next_report: None,                     // No shots fired = No player to report
+        player_order: vec![data.fleet.clone()],
+        next_player: Some(data.fleet.clone()),                 // first to join = first to shoot
+        next_report: None,                                     // No shots fired = No player to report
     });
 
     // Handle duplicate player
@@ -53,7 +54,7 @@ pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> Strin
         },
     );
 
-    // Create unified success message
+    // Create success message
     let players: Vec<String> = game.pmap.keys().cloned().collect();
     let msg = format!(
         "\

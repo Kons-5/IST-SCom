@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 pub mod validate;
 
-// Ask about ship layout
 // pub use validate::validate_battleship_board;
 
 // -----------------------------------------------------------------------------

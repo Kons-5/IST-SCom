@@ -1,5 +1,5 @@
-use crate::{xy_pos, Game, Player, SharedData};
-use fleetcore::{CommunicationData, FireJournal, SignedMessage};
+use crate::{SharedData, Player, Game, xy_pos, rotate_player_to_back};
+use fleetcore::{CommunicationData, FireJournal};
 use methods::FIRE_ID;
 
 use std::{
@@ -83,6 +83,9 @@ pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> Strin
     // Update game state
     game.next_player = None;
     game.next_report = Some(data.target.clone());
+
+    // Rotate current player to back of queue
+    rotate_player_to_back(game, &data.fleet);
 
     let msg = format!(
         "\

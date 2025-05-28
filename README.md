@@ -6,7 +6,6 @@ This project follows a modular structure inspired by the [RISC Zero Rust Starter
 src/
 ├── blockchain/
 ├── fleetcore/
-├── hello-world/
 ├── host/
 ├── methods/
 │   ├── guest/

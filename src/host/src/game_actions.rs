@@ -98,10 +98,14 @@ pub async fn win(idata: FormData) -> String {
         Ok(values) => values,
         Err(err) => return err,
     };
-    // TO DO: Rebuild the receipt
 
-    // Uncomment the following line when you are ready to send the receipt
-    //send_receipt(Command::Fire, receipt).await
-    // Comment out the following line when you are ready to send the receipt
-    "OK".to_string()
+    let input = BaseInputs {
+        gameid,
+        fleet: fleetid,
+        board,
+        random,
+    };
+
+    let receipt = generate_receipt(&input, WIN_ELF);
+    send_receipt(Command::Win, receipt).await
 }
