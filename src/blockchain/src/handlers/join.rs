@@ -1,5 +1,5 @@
-use crate::{SharedData, Player, Game, xy_pos};
-use fleetcore::{CommunicationData, BaseJournal};
+use crate::{xy_pos, Game, Player, SharedData};
+use fleetcore::{BaseJournal, CommunicationData, SignedMessage};
 use methods::JOIN_ID;
 
 use std::{
@@ -11,7 +11,10 @@ use std::{
 
 pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> String {
     if input_data.receipt.verify(JOIN_ID).is_err() {
-        shared.tx.send("Attempting to join game with invalid receipt".to_string()).unwrap();
+        shared
+            .tx
+            .send("Attempting to join game with invalid receipt".to_string())
+            .unwrap();
         return "Could not verify receipt".to_string();
     }
     // Decode journal
