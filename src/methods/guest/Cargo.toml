@@ -3,8 +3,6 @@ name = "proofs"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-
 [dependencies]
 fleetcore = { path = "../../fleetcore" }
 risc0-zkvm = { version = "2.0.2", default-features = false, features = ['std'] }

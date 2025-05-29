@@ -25,7 +25,10 @@ pub async fn join_game(idata: FormData) -> String {
     };
 
     // Generate Receipt
-    let receipt = generate_receipt(&input, JOIN_ELF);
+    let receipt = match generate_receipt(&input, JOIN_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
 
     // Send the receipt
     send_receipt(Command::Join, receipt, pubkey, privkey).await
@@ -49,7 +52,10 @@ pub async fn fire(idata: FormData) -> String {
     };
 
     // Generate Receipt
-    let receipt = generate_receipt(&input, FIRE_ELF);
+    let receipt = match generate_receipt(&input, FIRE_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
 
     // Send the receipt
     send_receipt(Command::Fire, receipt, pubkey, privkey).await
@@ -73,7 +79,10 @@ pub async fn report(idata: FormData) -> String {
     };
 
     // Generate Receipt
-    let receipt = generate_receipt(&input, REPORT_ELF);
+    let receipt = match generate_receipt(&input, REPORT_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
 
     // Send the receipt
     send_receipt(Command::Report, receipt, pubkey, privkey).await
@@ -92,7 +101,11 @@ pub async fn wave(idata: FormData) -> String {
         random,
     };
 
-    let receipt = generate_receipt(&input, WAVE_ELF);
+    let receipt = match generate_receipt(&input, WAVE_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
+
     send_receipt(Command::Wave, receipt, pubkey, privkey).await
 }
 
@@ -109,6 +122,10 @@ pub async fn win(idata: FormData) -> String {
         random,
     };
 
-    let receipt = generate_receipt(&input, WIN_ELF);
+    let receipt = match generate_receipt(&input, WIN_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
+
     send_receipt(Command::Win, receipt, pubkey, privkey).await
 }

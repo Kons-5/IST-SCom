@@ -15,9 +15,7 @@ ENV PATH="$PATH:/root/.risc0/bin:/root/.cargo/bin:/root/go/bin"
 RUN rustup component add rust-analyzer
 
 RUN rzup install cargo-risczero 2.0.2
-
 RUN rzup install r0vm 2.0.2
-
 RUN rzup install rust 1.85.0
 
 WORKDIR /tmp

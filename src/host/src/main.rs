@@ -134,7 +134,7 @@ async fn main() {
         .route("/submit", post(submit));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    println!("Listening on https://{}", addr);
+    println!("Listening on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
     axum::serve(listener, app)

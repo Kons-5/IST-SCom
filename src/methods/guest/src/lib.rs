@@ -1,5 +1,7 @@
 use risc0_zkvm::sha::Digest;
-use sha2::{Sha256, Digest as ShaDigest};
+use sha2::{Digest as ShaDigest, Sha256};
+
+pub mod validate;
 
 /// Computes a commitment hash for a board and nonce.
 ///
