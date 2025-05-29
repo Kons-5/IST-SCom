@@ -16,7 +16,9 @@ pub struct Player {
 
 pub struct Game {
     pub pmap: HashMap<String, Player>,      // All players in the game
+    pub shot_position: u8,                  // Last shot position
     pub player_order: Vec<String>,          // Player order
     pub next_player: Option<String>,        // player allowed to fire
     pub next_report: Option<String>,        // player expected to report
+
 }

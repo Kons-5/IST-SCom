@@ -36,6 +36,14 @@ pub fn handle_report(shared: &SharedData, input_data: &CommunicationData) -> Str
         return format!("It is not {}'s turn to report", data.fleet);
     }
 
+    // Make sure the shot advertised by the player is correct
+    if game.shot_position != data.pos{
+        return format!("Shot {} is not the shot fired by adversary ({})",
+            xy_pos(data.pos),
+            data.report,
+            xy_position(game.shot_position));
+    }
+
     // Validate that the stored commitment matches the one in the proof
     if player.current_state != data.board {
         return format!("Reported board does not match stored commitment");
