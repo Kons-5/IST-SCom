@@ -9,7 +9,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> String {
+pub fn handle_join(
+    shared: &SharedData,
+    input_data: &CommunicationData,
+    public_key: &[u8],
+) -> String {
     if input_data.receipt.verify(JOIN_ID).is_err() {
         shared
             .tx
@@ -28,22 +32,26 @@ pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> Strin
         pmap: HashMap::new(),
         shot_position: 100,
         player_order: vec![data.fleet.clone()],
-        next_player: Some(data.fleet.clone()),                 // first to join = first to shoot
-        next_report: None,                                     // No shots fired = No player to report
+        next_player: Some(data.fleet.clone()), // First to join = First to shoot
+        next_report: None,                     // No shots fired = No player to report
     });
 
     // Handle duplicate player
-    if game.pmap.contains_key(&data.fleet) {
-        let msg = format!(
+    if let Some(existing_player) = game.pmap.get(&data.fleet) {
+        if existing_player.public_key != public_key {
+            return format!(
+                "Public key mismatch for player \"{}\" in game \"{}\"",
+                data.fleet, data.gameid
+            );
+        }
+
+        return format!(
             "Player \"{}\" is already in game \"{}\". Current players: [{}]\n\n\n\
-            \x20",
+                \x20",
             data.fleet,
             data.gameid,
             game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
         );
-        // Check wheter it is expected to register invalid actions
-        // shared.tx.send(msg.clone()).unwrap();
-        return msg;
     }
 
     // Register the player in the game under their fleet ID (if not duplicate)
@@ -52,6 +60,7 @@ pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> Strin
         Player {
             name: data.fleet.clone(),
             current_state: data.board.clone(),
+            public_key: public_key.to_vec(),
         },
     );
 
@@ -75,7 +84,9 @@ pub fn handle_join(shared: &SharedData, input_data: &CommunicationData) -> Strin
         players.len(),
         players.join(", ")
     );
+
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
+
     "OK".to_string()
 }

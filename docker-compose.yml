@@ -8,7 +8,6 @@ services:
     #entrypoint: /bin/bash
     ports:
       - "3000:3000"
-      - "8000:8000"
     volumes:
       - .:/workspace:cached
     command: sleep infinity

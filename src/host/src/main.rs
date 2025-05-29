@@ -9,14 +9,17 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tokio::signal;
 use nanoid::nanoid;
+use tokio::signal;
 
 use host::{fire, join_game, report, wave, win, FormData};
 use std::net::SocketAddr;
 
+mod signing;
+use signing::{export_key_base64, generate_keypair};
+
 async fn index() -> Html<String> {
-    render_html(None, None, None, None, None, None)
+    render_html(None, None, None, None, None, None, None, None).await
 }
 
 fn process_input_data(input_data: FormData) -> FormData {
@@ -32,11 +35,21 @@ fn process_input_data(input_data: FormData) -> FormData {
 async fn submit(Form(input_data): Form<FormData>) -> Html<String> {
     let gameid = input_data.gameid.clone();
     let fleetid = input_data.fleetid.clone();
+    let input_pubkey = input_data.pubkey.clone();
+    let input_privkey = input_data.privkey.clone();
     let data = process_input_data(input_data);
+    let (pubkey, privkey) = match data.button.as_str() {
+        "Generate" => {
+            let (sk, pk) = generate_keypair();
+            (Some(export_key_base64(&pk)), Some(export_key_base64(&sk)))
+        }
+        _ => (input_pubkey.clone(), input_privkey.clone()),
+    };
     let random = data.random.clone();
     let board = data.board.clone();
     let shots = data.shots.clone();
     let response_text = match data.button.as_str() {
+        "Generate" => "Generated Public and Private Keys".to_string(),
         "Join" => join_game(data).await,
         "Fire" => fire(data).await,
         "Report" => report(data).await,
@@ -44,10 +57,23 @@ async fn submit(Form(input_data): Form<FormData>) -> Html<String> {
         "Win" => win(data).await,
         _ => "Unknown button pressed".to_string(),
     };
-    render_html(gameid, fleetid, random, board, shots, Some(response_text))
+
+    render_html(
+        pubkey,
+        privkey,
+        gameid,
+        fleetid,
+        random,
+        board,
+        shots,
+        Some(response_text),
+    )
+    .await
 }
 
-fn render_html(
+async fn render_html(
+    pubkey: Option<String>,
+    privkey: Option<String>,
     gameid: Option<String>,
     fleetid: Option<String>,
     random: Option<String>,
@@ -55,12 +81,17 @@ fn render_html(
     shots: Option<String>,
     response: Option<String>,
 ) -> Html<String> {
+    let pubkey = pubkey.unwrap_or("".to_string());
+    let privkey = privkey.unwrap_or("".to_string());
     let fleetid = fleetid.unwrap_or("".to_string());
     let gameid = gameid.unwrap_or("".to_string());
     let response_html = if let Some(response) = response {
         if response == "OK" {
             if gameid != "" {
-                format!("Playing Game: <b>{}</b> with fleet's ID: <b>{}</b> ", gameid, fleetid)
+                format!(
+                    "Playing Game: <b>{}</b> with fleet's ID: <b>{}</b> ",
+                    gameid, fleetid
+                )
             } else {
                 "Not in game".to_string()
             }
@@ -90,6 +121,8 @@ fn render_html(
     let html = html.replace("{random}", &random);
     let html = html.replace("{board}", &board);
     let html = html.replace("{shots}", &shots);
+    let html = html.replace("{pubkey}", &pubkey);
+    let html = html.replace("{privkey}", &privkey);
 
     Html(html)
 }
@@ -101,7 +134,7 @@ async fn main() {
         .route("/submit", post(submit));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    println!("Listening on {}", addr);
+    println!("Listening on https://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
     axum::serve(listener, app)

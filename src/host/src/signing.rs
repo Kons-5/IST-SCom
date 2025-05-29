@@ -22,11 +22,18 @@ pub fn generate_keypair() -> (Vec<u8>, Vec<u8>) {
 /// # Returns
 /// Signature as a byte vector
 pub fn sign_message(message: &[u8], private_key_bytes: &[u8]) -> Vec<u8> {
-    let sk = SecretKey::from_bytes(private_key_bytes).expect("invalid private key");
+    let sk = SecretKey::from_bytes(private_key_bytes).expect("Invalid private key");
     detached_sign(message, &sk).as_bytes().to_vec()
 }
 
-/// Exports the public key as base64.
-pub fn export_public_key_base64(public_key: &[u8]) -> String {
-    general_purpose::STANDARD.encode(public_key)
+/// Exports a key as base64.
+pub fn export_key_base64(key: &[u8]) -> String {
+    general_purpose::STANDARD.encode(key)
+}
+
+/// Import a key from base64.
+pub fn import_key_base64(key: &str) -> Vec<u8> {
+    general_purpose::STANDARD
+        .decode(key)
+        .expect("Invalid Base64 key")
 }

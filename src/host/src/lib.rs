@@ -10,10 +10,10 @@ mod signing;
 
 use fleetcore::{Command, CommunicationData, SignedMessage};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
-use std::error::Error;
+use std::{error::Error, string};
 
 pub use game_actions::{fire, join_game, report, wave, win};
-use signing::{generate_keypair, sign_message};
+use signing::{import_key_base64, sign_message};
 
 fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Receipt {
     // Build the Executor environment
@@ -31,7 +31,15 @@ fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Receipt {
     prover.prove(env, elf).unwrap().receipt
 }
 
-async fn send_receipt(action: Command, receipt: Receipt) -> String {
+async fn send_receipt(
+    action: Command,
+    receipt: Receipt,
+    pubkey: String,
+    privkey: String,
+) -> String {
+    let pk = import_key_base64(&pubkey);
+    let sk = import_key_base64(&privkey);
+
     let payload = CommunicationData {
         cmd: action,
         receipt,
@@ -42,7 +50,6 @@ async fn send_receipt(action: Command, receipt: Receipt) -> String {
         Err(_) => return "Failed to serialize payload".to_string(),
     };
 
-    let (sk, pk) = generate_keypair(); // isto assim cria sempre um par novo
     let signature = sign_message(&payload_bytes, &sk);
 
     let signed = SignedMessage {
@@ -70,6 +77,8 @@ async fn send_receipt(action: Command, receipt: Receipt) -> String {
 #[derive(Deserialize)]
 pub struct FormData {
     pub button: String,
+    pub pubkey: Option<String>,
+    pub privkey: Option<String>,
     pub gameid: Option<String>,
     pub fleetid: Option<String>,
     pub targetfleet: Option<String>,
@@ -83,7 +92,9 @@ pub struct FormData {
     pub random: Option<String>,
 }
 
-pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, String), String> {
+pub fn unmarshal_data(
+    idata: &FormData,
+) -> Result<(String, String, Vec<u8>, String, String, String), String> {
     let gameid = idata
         .gameid
         .clone()
@@ -95,6 +106,7 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
                 Ok(id)
             }
         })?;
+
     let fleetid = idata
         .fleetid
         .clone()
@@ -106,6 +118,7 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
                 Ok(id)
             }
         })?;
+
     let random: String = idata
         .random
         .clone()
@@ -130,7 +143,31 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
                 })
         })??;
 
-    Ok((gameid, fleetid, board, random))
+    let pubkey = idata
+        .pubkey
+        .clone()
+        .ok_or_else(|| "You must provide a Public Key".to_string())
+        .and_then(|id| {
+            if id.is_empty() {
+                Err("Public Key cannot be an empty string".to_string())
+            } else {
+                Ok(id)
+            }
+        })?;
+
+    let privkey = idata
+        .privkey
+        .clone()
+        .ok_or_else(|| "You must provide a Private Key".to_string())
+        .and_then(|id| {
+            if id.is_empty() {
+                Err("Private Key cannot be an empty string".to_string())
+            } else {
+                Ok(id)
+            }
+        })?;
+
+    Ok((gameid, fleetid, board, random, pubkey, privkey))
 }
 
 fn get_coordinates(x: &Option<String>, y: &Option<String>) -> Result<(u8, u8), String> {
@@ -169,21 +206,57 @@ fn get_coordinates(x: &Option<String>, y: &Option<String>) -> Result<(u8, u8), S
 
 pub fn unmarshal_fire(
     idata: &FormData,
-) -> Result<(String, String, Vec<u8>, String, String, u8, u8), String> {
-    let (gameid, fleetid, board, random) = unmarshal_data(idata)?;
+) -> Result<
+    (
+        String,
+        String,
+        Vec<u8>,
+        String,
+        String,
+        String,
+        String,
+        u8,
+        u8,
+    ),
+    String,
+> {
+    let (gameid, fleetid, board, random, pubkey, privkey) = unmarshal_data(idata)?;
     let (x, y) = get_coordinates(&idata.x, &idata.y)?;
     let targetfleet = idata
         .targetfleet
         .clone()
         .ok_or_else(|| "You must provide a Target Fleet ID".to_string())?;
 
-    Ok((gameid, fleetid, board, random, targetfleet, x, y))
+    Ok((
+        gameid,
+        fleetid,
+        board,
+        random,
+        pubkey,
+        privkey,
+        targetfleet,
+        x,
+        y,
+    ))
 }
 
 pub fn unmarshal_report(
     idata: &FormData,
-) -> Result<(String, String, Vec<u8>, String, String, u8, u8), String> {
-    let (gameid, fleetid, board, random) = unmarshal_data(idata)?;
+) -> Result<
+    (
+        String,
+        String,
+        Vec<u8>,
+        String,
+        String,
+        String,
+        String,
+        u8,
+        u8,
+    ),
+    String,
+> {
+    let (gameid, fleetid, board, random, pubkey, privkey) = unmarshal_data(idata)?;
     let (x, y) = get_coordinates(&idata.rx, &idata.ry)?;
     let report = idata
         .report
@@ -197,5 +270,7 @@ pub fn unmarshal_report(
             }
         })?;
 
-    Ok((gameid, fleetid, board, random, report, x, y))
+    Ok((
+        gameid, fleetid, board, random, pubkey, privkey, report, x, y,
+    ))
 }

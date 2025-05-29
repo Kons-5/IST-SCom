@@ -1,4 +1,4 @@
-use crate::{SharedData, Player, Game, xy_pos, rotate_player_to_back};
+use crate::{rotate_player_to_back, xy_pos, Game, Player, SharedData};
 use fleetcore::{CommunicationData, FireJournal};
 use methods::FIRE_ID;
 
@@ -9,7 +9,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> String {
+pub fn handle_fire(
+    shared: &SharedData,
+    input_data: &CommunicationData,
+    public_key: &[u8],
+) -> String {
     if input_data.receipt.verify(FIRE_ID).is_err() {
         shared
             .tx
@@ -45,6 +49,11 @@ pub fn handle_fire(shared: &SharedData, input_data: &CommunicationData) -> Strin
             )
         }
     };
+
+    // Confirm public key matches
+    if player.public_key != public_key {
+        return format!("Public key mismatch for player {}", data.fleet);
+    }
 
     // Validate commitment hash
     if data.board != player.current_state {

@@ -4,10 +4,6 @@
 use risc0_zkvm::{Digest, Receipt};
 use serde::{Deserialize, Serialize};
 
-pub mod validate;
-
-// pub use validate::validate_battleship_board;
-
 // -----------------------------------------------------------------------------
 // INPUT STRUCTS
 // -----------------------------------------------------------------------------

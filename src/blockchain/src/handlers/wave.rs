@@ -1,5 +1,5 @@
-use crate::{SharedData, Player, Game, xy_pos, rotate_player_to_back};
-use fleetcore::{CommunicationData, BaseJournal};
+use crate::{rotate_player_to_back, xy_pos, Game, Player, SharedData};
+use fleetcore::{BaseJournal, CommunicationData};
 use methods::WAVE_ID;
 
 use std::{
@@ -9,14 +9,20 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn handle_wave(shared: &SharedData, input_data: &CommunicationData) -> String {
+pub fn handle_wave(
+    shared: &SharedData,
+    input_data: &CommunicationData,
+    public_key: &[u8],
+) -> String {
     if input_data.receipt.verify(WAVE_ID).is_err() {
-        shared.tx.send("Attempting to wave game with invalid receipt".to_string()).unwrap();
+        shared
+            .tx
+            .send("Attempting to wave game with invalid receipt".to_string())
+            .unwrap();
         return "Could not verify receipt".to_string();
     }
     // Decode journal
     let data: BaseJournal = input_data.receipt.journal.decode().unwrap();
-
 
     // Confirm game exists
     let mut gmap = shared.gmap.lock().unwrap();
@@ -43,6 +49,11 @@ pub fn handle_wave(shared: &SharedData, input_data: &CommunicationData) -> Strin
         }
     };
 
+    // Confirm public key matches
+    if player.public_key != public_key {
+        return format!("Public key mismatch for player {}", data.fleet);
+    }
+
     // Validate commitment hash
     if data.board != player.current_state {
         return "Fleet commitment does not match recorded state\n\n\n\
@@ -60,9 +71,11 @@ pub fn handle_wave(shared: &SharedData, input_data: &CommunicationData) -> Strin
                 data.fleet
             );
         } else {
-            return format!("It's not {}'s turn\n\n\n\
+            return format!(
+                "It's not {}'s turn\n\n\n\
             \x20",
-            data.fleet);
+                data.fleet
+            );
         }
     }
 

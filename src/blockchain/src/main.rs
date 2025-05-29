@@ -103,31 +103,33 @@ async fn smart_contract(
     Extension(shared): Extension<SharedData>,
     Json(signed): Json<SignedMessage<CommunicationData>>,
 ) -> String {
-    let payload_bytes = match serde_json::to_vec(&signed.payload) {
+    let input_data = &signed.payload;
+    let signature = &signed.signature;
+    let public_key = &signed.public_key;
+
+    let payload_bytes = match serde_json::to_vec(input_data) {
         Ok(bytes) => bytes,
         Err(_) => return "Failed to serialize payload".to_string(),
     };
 
-    if !verify_signature(&payload_bytes, &signed.signature, &signed.public_key) {
+    if !verify_signature(&payload_bytes, signature, public_key) {
         return "Invalid signature".to_string();
         // o q fazer mais neste caso?
     }
 
-    let input_data = &signed.payload;
-
     match input_data.cmd {
-        Command::Join => handle_join(&shared, input_data),
-        Command::Fire => handle_fire(&shared, input_data),
-        Command::Report => handle_report(&shared, input_data),
-        Command::Wave => handle_wave(&shared, input_data),
-        Command::Win => handle_win(&shared, input_data),
+        Command::Join => handle_join(&shared, input_data, public_key),
+        Command::Fire => handle_fire(&shared, input_data, public_key),
+        Command::Report => handle_report(&shared, input_data, public_key),
+        Command::Wave => handle_wave(&shared, input_data, public_key),
+        Command::Win => handle_win(&shared, input_data, public_key),
     }
 }
 
 // -----------------------------------------------------------------------------
 // AUXILIARY FUNCTIONS
 // -----------------------------------------------------------------------------
-//
+
 fn xy_pos(pos: u8) -> String {
     let x = pos % 10;
     let y = pos / 10;

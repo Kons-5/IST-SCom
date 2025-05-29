@@ -9,7 +9,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub fn handle_report(shared: &SharedData, input_data: &CommunicationData) -> String {
+pub fn handle_report(
+    shared: &SharedData,
+    input_data: &CommunicationData,
+    public_key: &[u8],
+) -> String {
     if input_data.receipt.verify(REPORT_ID).is_err() {
         shared
             .tx
@@ -31,17 +35,23 @@ pub fn handle_report(shared: &SharedData, input_data: &CommunicationData) -> Str
         None => return format!("Player {} not found in game {}", data.fleet, data.gameid),
     };
 
+    // Confirm public key matches
+    if player.public_key != public_key {
+        return format!("Public key mismatch for player {}", data.fleet);
+    }
+
     // Ensure this player is the one expected to report
     if game.next_report.as_ref() != Some(&data.fleet) {
         return format!("It is not {}'s turn to report", data.fleet);
     }
 
     // Make sure the shot advertised by the player is correct
-    if game.shot_position != data.pos{
-        return format!("Shot {} is not the shot fired by adversary ({})",
+    if game.shot_position != data.pos {
+        return format!(
+            "Shot {} is not the shot fired by adversary ({})",
             xy_pos(data.pos),
-            data.report,
-            xy_position(game.shot_position));
+            xy_pos(game.shot_position)
+        );
     }
 
     // Validate that the stored commitment matches the one in the proof
