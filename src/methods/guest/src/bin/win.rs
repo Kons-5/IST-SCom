@@ -10,7 +10,7 @@ fn main() {
     // Validate that the fleet is NOT fully sunk
     assert!(
         !input.board.is_empty(),
-        "Your fleet is fully sunk — cannot fire"
+        "Your fleet is fully sunk. Cannot claim victory..."
     );
 
     let digest = hash_board(&input.board, &input.random);

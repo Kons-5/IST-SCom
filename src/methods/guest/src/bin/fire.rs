@@ -2,7 +2,7 @@ use fleetcore::{FireInputs, FireJournal};
 
 use risc0_zkvm::guest::env;
 use risc0_zkvm::sha::Digest;
-use sha2::{Sha256, Digest as ShaDigest};
+use sha2::{Digest as ShaDigest, Sha256};
 
 fn main() {
     // Read the input
@@ -11,7 +11,7 @@ fn main() {
     // Validate that the fleet is NOT fully sunk
     assert!(
         !input.board.is_empty(),
-        "Your fleet is fully sunk — cannot fire"
+        "Your fleet is fully sunk. Cannot fire!"
     );
 
     // Commitment hash: Hash(nonce || board)
