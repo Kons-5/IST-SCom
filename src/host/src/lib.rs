@@ -15,22 +15,6 @@ use std::{error::Error, string};
 pub use game_actions::{fire, join_game, report, wave, win};
 use signing::{import_key_base64, sign_message};
 
-// fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Receipt {
-//     // Build the Executor environment
-//     let env = ExecutorEnv::builder()
-//         .write(input)
-//         .unwrap()
-//         .build()
-//         .unwrap();
-
-//     // Get the default prover
-//     let prover = default_prover();
-
-//     // Run the proof and return the receipt
-//     // This is an implicit return
-//     prover.prove(env, elf).unwrap().receipt
-// }
-
 fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Result<Receipt, String> {
     let env = ExecutorEnv::builder()
         .write(input)

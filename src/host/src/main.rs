@@ -8,7 +8,9 @@ use axum::{
     response::Html,
     routing::{get, post},
     Router,
+    Json
 };
+use serde_json::json;
 use nanoid::nanoid;
 use tokio::signal;
 
@@ -32,24 +34,26 @@ fn process_input_data(input_data: FormData) -> FormData {
     }
 }
 
+async fn generate_keys() -> Json<serde_json::Value> {
+    let (sk, pk) = generate_keypair();
+    Json(json!({
+        "privkey": export_key_base64(&sk),
+        "pubkey": export_key_base64(&pk),
+    }))
+}
+
 async fn submit(Form(input_data): Form<FormData>) -> Html<String> {
     let gameid = input_data.gameid.clone();
     let fleetid = input_data.fleetid.clone();
     let input_pubkey = input_data.pubkey.clone();
     let input_privkey = input_data.privkey.clone();
     let data = process_input_data(input_data);
-    let (pubkey, privkey) = match data.button.as_str() {
-        "Generate" => {
-            let (sk, pk) = generate_keypair();
-            (Some(export_key_base64(&pk)), Some(export_key_base64(&sk)))
-        }
-        _ => (input_pubkey.clone(), input_privkey.clone()),
-    };
+    let pubkey = data.pubkey.clone();
+    let privkey = data.privkey.clone();
     let random = data.random.clone();
     let board = data.board.clone();
     let shots = data.shots.clone();
     let response_text = match data.button.as_str() {
-        "Generate" => "Generated Public and Private Keys".to_string(),
         "Join" => join_game(data).await,
         "Fire" => fire(data).await,
         "Report" => report(data).await,
@@ -131,7 +135,8 @@ async fn render_html(
 async fn main() {
     let app = Router::new()
         .route("/", get(index))
-        .route("/submit", post(submit));
+        .route("/submit", post(submit))
+        .route("/generate_keys", get(generate_keys));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     println!("Listening on http://{}", addr);
