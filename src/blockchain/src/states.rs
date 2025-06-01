@@ -1,4 +1,5 @@
 use risc0_zkvm::Digest;
+use std::time::Instant;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -18,10 +19,17 @@ pub struct Player {
     pub public_key: Vec<u8>,   // Player public key
 }
 
+pub struct PendingWin {
+    pub claimant: String, // Fleet ID that claimed win
+    pub board: Digest,    // Committed board hash
+    pub time: Instant,    // Time when claim was made
+}
+
 pub struct Game {
-    pub pmap: HashMap<String, Player>, // All players in the game
-    pub shot_position: u8,             // Last shot position
-    pub player_order: Vec<String>,     // Player order
-    pub next_player: Option<String>,   // player allowed to fire
-    pub next_report: Option<String>,   // player expected to report
+    pub pmap: HashMap<String, Player>,   // All players in the game
+    pub shot_position: u8,               // Last shot position
+    pub pending_win: Option<PendingWin>, // If someone has claimed victory
+    pub player_order: Vec<String>,       // Player order
+    pub next_player: Option<String>,     // player allowed to fire
+    pub next_report: Option<String>,     // player expected to report
 }

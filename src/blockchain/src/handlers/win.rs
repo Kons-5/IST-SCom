@@ -1,6 +1,7 @@
-use crate::{xy_pos, Game, Player, SharedData};
+use crate::{xy_pos, Game, PendingWin, Player, SharedData};
 use fleetcore::{BaseJournal, CommunicationData};
 use methods::WIN_ID;
+use std::time::Instant;
 
 use std::{
     collections::HashMap,
@@ -62,15 +63,25 @@ pub fn handle_win(
             .to_string();
     }
 
+    // Check if there's a win claim already
+    if game.pending_win.is_some() {
+        return "A victory claim is already pending<br>".to_string();
+    }
+
+    // Change the game state
+    game.pending_win = Some(PendingWin {
+        claimant: data.fleet.clone(),
+        board: data.board,
+        time: Instant::now(),
+    });
+
     let msg = format!(
-        "Player {} has claimed victory in game {}!\n\n\n
-         \x20",
+        "Player {} has claimed victory in game {}!\n\
+        Anyone may now contest the claim (300 second window).\n\n\
+        \x20",
         data.fleet, data.gameid
     );
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-
-    // Remove the game from the blockchain
-    gmap.remove(&data.gameid);
     html_msg
 }

@@ -5,7 +5,7 @@ use crate::{
 };
 
 use fleetcore::{BaseInputs, Command, FireInputs};
-use methods::{FIRE_ELF, JOIN_ELF, REPORT_ELF, WAVE_ELF, WIN_ELF};
+use methods::{CONTEST_ELF, FIRE_ELF, JOIN_ELF, REPORT_ELF, WAVE_ELF, WIN_ELF};
 
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 
@@ -128,4 +128,25 @@ pub async fn win(idata: FormData) -> String {
     };
 
     send_receipt(Command::Win, receipt, pubkey, privkey).await
+}
+
+pub async fn contest(idata: FormData) -> String {
+    let (gameid, fleetid, board, random, pubkey, privkey) = match unmarshal_data(&idata) {
+        Ok(values) => values,
+        Err(err) => return err,
+    };
+
+    let input = BaseInputs {
+        gameid,
+        fleet: fleetid,
+        board,
+        random,
+    };
+
+    let receipt = match generate_receipt(&input, CONTEST_ELF) {
+        Ok(r) => r,
+        Err(e) => return format!("Proof generation failed: {e}"),
+    };
+
+    send_receipt(Command::Contest, receipt, pubkey, privkey).await
 }

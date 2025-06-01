@@ -7,14 +7,13 @@ use axum::{
     extract::Form,
     response::Html,
     routing::{get, post},
-    Router,
-    Json
+    Json, Router,
 };
-use serde_json::json;
 use nanoid::nanoid;
+use serde_json::json;
 use tokio::signal;
 
-use host::{fire, join_game, report, wave, win, FormData};
+use host::{contest, fire, join_game, report, wave, win, FormData};
 use std::net::SocketAddr;
 
 mod signing;
@@ -59,6 +58,7 @@ async fn submit(Form(input_data): Form<FormData>) -> Html<String> {
         "Report" => report(data).await,
         "Wave" => wave(data).await,
         "Win" => win(data).await,
+        "Contest" => contest(data).await,
         _ => "Unknown button pressed".to_string(),
     };
 

@@ -42,6 +42,7 @@ pub enum Command {
     Report,
     Wave,
     Win,
+    Contest,
 }
 
 /// Struct used to specify the packet sent from the client to the blockchain server
