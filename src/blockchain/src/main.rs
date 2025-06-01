@@ -47,6 +47,7 @@ async fn main() {
         rng: Arc::new(Mutex::new(rand::rngs::StdRng::from_entropy())),
     };
 
+    // Spawn a background task to periodically finalize unchallenged victory claims
     tokio::spawn(check_pending_wins(shared.clone()));
 
     // Build our application with a route
