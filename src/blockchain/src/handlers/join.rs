@@ -32,21 +32,22 @@ pub fn handle_join(
         pmap: HashMap::new(),
         shot_position: 100,
         player_order: vec![data.fleet.clone()],
-        next_player: Some(data.fleet.clone()), // First to join = First to shoot
-        next_report: None,                     // No shots fired = No player to report
+        next_turn_commitment: input_data.r_hash,        // First player sets turn commitment
+        next_report: None,                              // To be set with turn commitment when player shoots
+        encrypted_token: input_data.enc_token.clone(),  // Store encrypted r
     });
 
     // Handle duplicate player
     if let Some(existing_player) = game.pmap.get(&data.fleet) {
         if existing_player.public_key != public_key {
             return format!(
-                "Public key mismatch for player \"{}\" in game \"{}\"",
+                "Public key mismatch for player {} in game {}",
                 data.fleet, data.gameid
             );
         }
 
         return format!(
-            "Player \"{}\" is already in game \"{}\". Current players: [{}]\n\n\n\
+            "Player {} is already in game {}. Current players: [{}]\n\n\n\
                 \x20",
             data.fleet,
             data.gameid,
@@ -55,12 +56,14 @@ pub fn handle_join(
     }
 
     // Register the player in the game under their fleet ID (if not duplicate)
+    let rsa_pubkey = input_data.pub_rsa_pubkey.clone();
     game.pmap.insert(
         data.fleet.clone(),
         Player {
             name: data.fleet.clone(),
             current_state: data.board.clone(),
             public_key: public_key.to_vec(),
+            rsa_pubkey: rsa_pubkey.to_vec(),
         },
     );
 

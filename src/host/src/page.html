@@ -171,18 +171,26 @@
                 const form = document.querySelector("form");
 
                 // Ensure keys are injected just before submission
-                const pubkey = sessionStorage.getItem("dilithium_pubkey");
-                const privkey = sessionStorage.getItem("dilithium_privkey");
-                form.querySelector("input[name='pubkey']").value = pubkey || "";
-                form.querySelector("input[name='privkey']").value =
-                    privkey || "";
+                const d_pubkey = sessionStorage.getItem("dilithium_pubkey");
+                const d_privkey = sessionStorage.getItem("dilithium_privkey");
+                const rsa_pubkey = sessionStorage.getItem("rsa_pubkey");
+                const rsa_privkey = sessionStorage.getItem("rsa_privkey");
+
+                form.querySelector("input[name='d_pubkey']").value =
+                    d_pubkey || "";
+                form.querySelector("input[name='d_privkey']").value =
+                    d_privkey || "";
+                form.querySelector("input[name='rsa_pubkey']").value =
+                    rsa_pubkey || "";
+                form.querySelector("input[name='rsa_privkey']").value =
+                    rsa_privkey || "";
 
                 setTimeout(() => {
                     const buttons = form.querySelectorAll(
                         'button[type="submit"]',
                     );
                     buttons.forEach((button) => (button.disabled = true));
-                }, 10); // Small delay (0 ms)
+                }, 10);
             }
 
             function getBoard(event) {
@@ -216,25 +224,30 @@
             (async () => {
                 const hasKeys =
                     sessionStorage.getItem("dilithium_pubkey") &&
-                    sessionStorage.getItem("dilithium_privkey");
+                    sessionStorage.getItem("dilithium_privkey") &&
+                    sessionStorage.getItem("rsa_pubkey") &&
+                    sessionStorage.getItem("rsa_privkey");
 
                 if (!hasKeys) {
                     const res = await fetch("/generate_keys");
-                    const { pubkey, privkey } = await res.json();
-                    sessionStorage.setItem("dilithium_pubkey", pubkey);
-                    sessionStorage.setItem("dilithium_privkey", privkey);
-                }
+                    const { d_pubkey, d_privkey, rsa_pubkey, rsa_privkey } =
+                        await res.json();
 
-                const pubkey = sessionStorage.getItem("dilithium_pubkey");
-                const privkey = sessionStorage.getItem("dilithium_privkey");
+                    sessionStorage.setItem("dilithium_pubkey", d_pubkey);
+                    sessionStorage.setItem("dilithium_privkey", d_privkey);
+                    sessionStorage.setItem("rsa_pubkey", rsa_pubkey);
+                    sessionStorage.setItem("rsa_privkey", rsa_privkey);
+                }
             })();
         </script>
         <div>
             <form action="/submit" method="post" onsubmit="submitForm(event)">
                 <input type="hidden" name="board" id="board" />
                 <input type="hidden" name="shots" id="shots" />
-                <input type="hidden" name="privkey" />
-                <input type="hidden" name="pubkey" />
+                <input type="hidden" name="d_privkey" />
+                <input type="hidden" name="d_pubkey" />
+                <input type="hidden" name="rsa_pubkey" />
+                <input type="hidden" name="rsa_privkey" />
                 <input
                     type="hidden"
                     name="random"

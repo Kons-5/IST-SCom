@@ -11,9 +11,14 @@ use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 
 pub async fn join_game(idata: FormData) -> String {
     // This contains the game ID, Fleet ID, the board vector, and the random nonce
-    let (gameid, fleetid, board, random, pubkey, privkey) = match unmarshal_data(&idata) {
+    let (gameid, fleetid, board, random) = match unmarshal_data(&idata) {
         Ok(values) => values,
         Err(err) => return err,
+    };
+
+    let rsa_pubkey = match &idata.rsa_pubkey {
+        Some(k) if !k.is_empty() => k.clone(),
+        _ => return "Missing RSA public key".to_string(),
     };
 
     // Create the zkVM input struct
@@ -31,11 +36,11 @@ pub async fn join_game(idata: FormData) -> String {
     };
 
     // Send the receipt
-    send_receipt(Command::Join, receipt, pubkey, privkey).await
+    send_receipt(Command::Join, receipt, &idata, Some(rsa_pubkey)).await
 }
 
 pub async fn fire(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, pubkey, privkey, targetfleet, x, y) =
+    let (gameid, fleetid, board, random, targetfleet, x, y) =
         match unmarshal_fire(&idata) {
             Ok(values) => values,
             Err(err) => return err,
@@ -58,11 +63,11 @@ pub async fn fire(idata: FormData) -> String {
     };
 
     // Send the receipt
-    send_receipt(Command::Fire, receipt, pubkey, privkey).await
+    send_receipt(Command::Fire, receipt, &idata, None).await
 }
 
 pub async fn report(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, pubkey, privkey, _report, x, y) =
+    let (gameid, fleetid, board, random, _report, x, y) =
         match unmarshal_report(&idata) {
             Ok(values) => values,
             Err(err) => return err,
@@ -85,11 +90,11 @@ pub async fn report(idata: FormData) -> String {
     };
 
     // Send the receipt
-    send_receipt(Command::Report, receipt, pubkey, privkey).await
+    send_receipt(Command::Report, receipt, &idata, None).await
 }
 
 pub async fn wave(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, pubkey, privkey) = match unmarshal_data(&idata) {
+    let (gameid, fleetid, board, random) = match unmarshal_data(&idata) {
         Ok(values) => values,
         Err(err) => return err,
     };
@@ -106,11 +111,11 @@ pub async fn wave(idata: FormData) -> String {
         Err(e) => return format!("Proof generation failed: {e}"),
     };
 
-    send_receipt(Command::Wave, receipt, pubkey, privkey).await
+    send_receipt(Command::Wave, receipt, &idata, None).await
 }
 
 pub async fn win(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, pubkey, privkey) = match unmarshal_data(&idata) {
+    let (gameid, fleetid, board, random) = match unmarshal_data(&idata) {
         Ok(values) => values,
         Err(err) => return err,
     };
@@ -127,5 +132,5 @@ pub async fn win(idata: FormData) -> String {
         Err(e) => return format!("Proof generation failed: {e}"),
     };
 
-    send_receipt(Command::Win, receipt, pubkey, privkey).await
+    send_receipt(Command::Win, receipt, &idata, None).await
 }

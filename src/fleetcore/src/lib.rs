@@ -49,6 +49,10 @@ pub enum Command {
 pub struct CommunicationData {
     pub cmd: Command,
     pub receipt: Receipt,
+
+    pub enc_token: Option<String>,
+    pub r_hash: Option<[u8; 32]>,
+    pub pub_rsa_key: Vec<u8>,
 }
 
 /// Wrapper for signed messages.

@@ -13,15 +13,18 @@ pub struct SharedData {
 }
 
 pub struct Player {
-    pub name: String,          // Player ID
-    pub current_state: Digest, // Commitment hash
-    pub public_key: Vec<u8>,   // Player public key
+    pub name: String,               // Player ID
+    pub current_state: Digest,      // Commitment hash
+    pub public_key: Vec<u8>,        // Player public key
+    pub rsa_pubkey: Vec<u8>,
 }
 
 pub struct Game {
     pub pmap: HashMap<String, Player>, // All players in the game
     pub shot_position: u8,             // Last shot position
     pub player_order: Vec<String>,     // Player order
-    pub next_player: Option<String>,   // player allowed to fire
+
+    pub next_turn_commitment: Option<[u8; 32]>,
     pub next_report: Option<String>,   // player expected to report
+    pub encrypted_token: Option<String>
 }
