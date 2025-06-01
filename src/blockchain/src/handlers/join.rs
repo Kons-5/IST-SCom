@@ -34,6 +34,7 @@ pub fn handle_join(
         player_order: vec![data.fleet.clone()],
         next_player: Some(data.fleet.clone()), // First to join = First to shoot
         next_report: None,                     // No shots fired = No player to report
+        pending_win: None,
     });
 
     // Handle duplicate player

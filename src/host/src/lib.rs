@@ -12,7 +12,7 @@ use fleetcore::{Command, CommunicationData, SignedMessage};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use std::{error::Error, string};
 
-pub use game_actions::{fire, join_game, report, wave, win};
+pub use game_actions::{contest, fire, join_game, report, wave, win};
 use signing::{import_key_base64, sign_message};
 
 fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Result<Receipt, String> {

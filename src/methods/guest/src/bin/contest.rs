@@ -1,14 +1,18 @@
+// methods/guest/src/bin/contest.rs
+
 use fleetcore::{BaseInputs, BaseJournal};
 use proofs::hash_board;
 
 use risc0_zkvm::guest::env;
 
 fn main() {
-    // Read the input
     let input: BaseInputs = env::read();
 
-    // Validate that the fleet is NOT fully sunk
-    assert!(!input.board.is_empty(), "Your fleet is fully sunk...");
+    // Check that the fleet still has ships (i.e., contest is valid)
+    assert!(
+        !input.board.is_empty(),
+        "You cannot contest with an empty fleet"
+    );
 
     let digest = hash_board(&input.board, &input.random);
 
