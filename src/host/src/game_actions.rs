@@ -40,11 +40,10 @@ pub async fn join_game(idata: FormData) -> String {
 }
 
 pub async fn fire(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, targetfleet, x, y) =
-        match unmarshal_fire(&idata) {
-            Ok(values) => values,
-            Err(err) => return err,
-        };
+    let (gameid, fleetid, board, random, targetfleet, x, y) = match unmarshal_fire(&idata) {
+        Ok(values) => values,
+        Err(err) => return err,
+    };
 
     // Create the zkVM input struct
     let input = FireInputs {
@@ -67,11 +66,10 @@ pub async fn fire(idata: FormData) -> String {
 }
 
 pub async fn report(idata: FormData) -> String {
-    let (gameid, fleetid, board, random, _report, x, y) =
-        match unmarshal_report(&idata) {
-            Ok(values) => values,
-            Err(err) => return err,
-        };
+    let (gameid, fleetid, board, random, _report, x, y) = match unmarshal_report(&idata) {
+        Ok(values) => values,
+        Err(err) => return err,
+    };
 
     // Create the zkVM input struct
     let input = FireInputs {
