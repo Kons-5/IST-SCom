@@ -77,7 +77,7 @@ pub fn handle_win(
 
     let msg = format!(
         "Player {} has claimed victory in game {}!\n\
-        Anyone may now contest the claim (300 second window).\n\n\
+        Anyone may now contest the claim.\n\n\
         \x20",
         data.fleet, data.gameid
     );
