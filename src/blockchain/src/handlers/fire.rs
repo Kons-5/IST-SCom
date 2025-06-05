@@ -92,7 +92,7 @@ pub fn handle_fire(
     // Update game state
     game.next_player = None;
     game.next_report = Some(data.target.clone());
-    game.shot_position = data.pos.clone();
+    game.shot_position = Some(data.pos.clone());
 
     // Rotate current player to back of queue
     rotate_player_to_back(game, &data.fleet);
@@ -103,12 +103,13 @@ pub fn handle_fire(
         \x20 ▶ {} fired at position {} targeting {} in game {}\n\n\n\
         \x20",
         data.fleet,
-        xy_pos(data.pos),
+        xy_pos(Some(data.pos)),
         data.target,
         data.gameid
     );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

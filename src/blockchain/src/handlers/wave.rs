@@ -106,5 +106,6 @@ pub fn handle_wave(
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

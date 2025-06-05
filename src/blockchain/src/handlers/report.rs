@@ -46,10 +46,10 @@ pub fn handle_report(
     }
 
     // Make sure the shot advertised by the player is correct
-    if game.shot_position != data.pos {
+    if game.shot_position != Some(data.pos) {
         return format!(
             "Shot {} is not the shot fired by adversary ({})",
-            xy_pos(data.pos),
+            xy_pos(Some(data.pos)),
             xy_pos(game.shot_position)
         );
     }
@@ -76,11 +76,12 @@ pub fn handle_report(
         \x20",
         data.fleet,
         data.report,
-        xy_pos(data.pos),
+        xy_pos(Some(data.pos)),
         data.fleet,
     );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

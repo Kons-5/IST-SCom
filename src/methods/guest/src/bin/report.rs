@@ -36,7 +36,7 @@ fn handle_miss(input: &FireInputs) -> ReportJournal {
     // Position must not be present in the board
     assert!(
         !input.board.contains(&input.pos),
-        "Claimed Miss, but target position was a hit"
+        "Claimed miss, but target position was a hit"
     );
 
     // Hash board once
@@ -61,10 +61,10 @@ fn handle_miss(input: &FireInputs) -> ReportJournal {
 /// # Panics
 /// - If the position is still present in the updated board (shot not applied)
 fn handle_hit(input: &FireInputs) -> ReportJournal {
-    // Position must no longe be present in the board
+    // Position must no longer be present in the board
     assert!(
-        !input.board.contains(&input.pos),
-        "Claimed Hit, but position still in updated board"
+        input.board.contains(&input.pos),
+        "Claimed hit, but position still in updated board"
     );
 
     // Reconstruct original board

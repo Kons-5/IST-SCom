@@ -65,7 +65,7 @@ pub fn handle_win(
 
     // Check if there's a win claim already
     if game.pending_win.is_some() {
-        return "A victory claim is already pending<br>".to_string();
+        return "There's a victory claim already<br>".to_string();
     }
 
     // Change the game state

@@ -47,9 +47,6 @@ async fn main() {
         rng: Arc::new(Mutex::new(rand::rngs::StdRng::from_entropy())),
     };
 
-    // Spawn a background task to periodically finalize unchallenged victory claims
-    tokio::spawn(check_pending_wins(shared.clone()));
-
     // Build our application with a route
     let app = Router::new()
         .route("/", get(index))
@@ -129,10 +126,15 @@ async fn smart_contract(
 // AUXILIARY FUNCTIONS
 // -----------------------------------------------------------------------------
 
-fn xy_pos(pos: u8) -> String {
-    let x = pos % 10;
-    let y = pos / 10;
-    format!("{}{}", (x + 65) as char, y)
+fn xy_pos(pos: Option<u8>) -> String {
+    match pos {
+        Some(p) => {
+            let x = p % 10;
+            let y = p / 10;
+            format!("{}{}", (x + 65) as char, y)
+        }
+        None => "None".to_string(),
+    }
 }
 
 /// Moves the current player to the back of the queue, without updating next_player.
@@ -140,36 +142,5 @@ fn rotate_player_to_back(game: &mut Game, player_id: &str) {
     if let Some(pos) = game.player_order.iter().position(|id| id == player_id) {
         let who = game.player_order.remove(pos);
         game.player_order.push(who);
-    }
-}
-
-async fn check_pending_wins(shared: SharedData) {
-    loop {
-        {
-            let mut gmap = shared.gmap.lock().unwrap();
-            let now = Instant::now();
-
-            let mut to_finalize = vec![];
-
-            for (gid, game) in gmap.iter() {
-                if let Some(pending) = &game.pending_win {
-                    // Verify if the timeout has elapsed (300 seconds)
-                    if now.duration_since(pending.time) > Duration::from_secs(300) {
-                        to_finalize.push((gid.clone(), pending.claimant.clone()));
-                    }
-                }
-            }
-
-            for (gid, winner) in to_finalize {
-                gmap.remove(&gid);
-                let msg = format!(
-                    "Victory claim by {} in game {} has been finalized (no contest).",
-                    winner, gid
-                );
-                shared.tx.send(msg.replace('\n', "<br>")).unwrap();
-            }
-        }
-
-        sleep(Duration::from_secs(15)).await;
     }
 }

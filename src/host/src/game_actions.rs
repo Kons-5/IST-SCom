@@ -78,10 +78,12 @@ pub async fn report(idata: FormData) -> String {
         pos: y * 10 + x,
     };
 
+    println!("{}", &input.pos);
+
     // Generate Receipt
     let receipt = match generate_receipt(&input, REPORT_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed: {e}\n"),
     };
 
     // Send the receipt

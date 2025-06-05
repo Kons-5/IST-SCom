@@ -30,12 +30,21 @@ pub fn handle_join(
     let mut gmap = shared.gmap.lock().unwrap();
     let game = gmap.entry(data.gameid.clone()).or_insert(Game {
         pmap: HashMap::new(),
-        shot_position: 100,
+        shot_position: None,
         player_order: vec![data.fleet.clone()],
         next_player: Some(data.fleet.clone()), // First to join = First to shoot
         next_report: None,                     // No shots fired = No player to report
         pending_win: None,
     });
+
+    if !game.shot_position.is_none() {
+        return format!(
+            "Trying to join an ongoing game (\"{}\").\n Current players: [{}]\n\n\n\
+              \x20",
+            data.gameid,
+            game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
+        );
+    }
 
     // Handle duplicate player
     if let Some(existing_player) = game.pmap.get(&data.fleet) {

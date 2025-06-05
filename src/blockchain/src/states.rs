@@ -27,7 +27,7 @@ pub struct PendingWin {
 
 pub struct Game {
     pub pmap: HashMap<String, Player>,   // All players in the game
-    pub shot_position: u8,               // Last shot position
+    pub shot_position: Option<u8>,       // Last shot position
     pub pending_win: Option<PendingWin>, // If someone has claimed victory
 
     pub player_order: Vec<String>,   // Player order
