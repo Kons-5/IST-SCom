@@ -61,9 +61,9 @@ fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Result<Receip
 
     let session = prover
         .prove(env, elf)
-        .map_err(|e| format!("zkVM proof failed: {:?}", e))?;
+        .map_err(|e| format!("zkVM proof failed, {:?}", e))?;
 
-    Ok(session.receipt)
+    Ok(session.receipt):
 }
 
 /// Sends a signed CommunicationData payload to the blockchain, optionally encrypting a turn token.

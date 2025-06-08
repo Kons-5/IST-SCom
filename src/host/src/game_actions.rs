@@ -38,7 +38,7 @@ pub async fn join_game(idata: FormData) -> String {
     // Generate Receipt
     let receipt = match generate_receipt(&input, JOIN_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     // Send your own pubkey to register on the blockchain
@@ -77,7 +77,7 @@ pub async fn fire(idata: FormData) -> String {
     // Generate Receipt
     let receipt = match generate_receipt(&input, FIRE_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     // Fetch target public key
@@ -115,7 +115,7 @@ pub async fn report(idata: FormData) -> String {
     // Generate Receipt
     let receipt = match generate_receipt(&input, REPORT_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     // Send your own pubkey
@@ -150,7 +150,7 @@ pub async fn wave(idata: FormData) -> String {
 
     let receipt = match generate_receipt(&input, WAVE_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     let target = match pick_random_other_player(&gameid_clone, &fleetid_clone).await {
@@ -182,7 +182,7 @@ pub async fn win(idata: FormData) -> String {
 
     let receipt = match generate_receipt(&input, WIN_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     send_receipt(Command::Win, receipt, &idata, None).await
@@ -204,7 +204,7 @@ pub async fn contest(idata: FormData) -> String {
 
     let receipt = match generate_receipt(&input, CONTEST_ELF) {
         Ok(r) => r,
-        Err(e) => return format!("Proof generation failed: {e}"),
+        Err(e) => return format!("Proof generation failed, {e}"),
     };
 
     send_receipt(Command::Contest, receipt, &idata, None).await
@@ -244,7 +244,7 @@ async fn build_token_auth(gameid: &str, idata: &FormData) -> Result<TokenAuth, S
 
     let decrypted_token = privkey
         .decrypt(Pkcs1v15Encrypt, &encrypted_bytes)
-        .map_err(|_| "Decrypt failed")?;
+        .map_err(|_| "Decrypt failed, not player's turn?")?;
 
     let digest = Digest::try_from(token_data.token_hash.as_slice())
         .map_err(|_| "Invalid token hash length")?;

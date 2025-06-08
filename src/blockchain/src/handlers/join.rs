@@ -40,7 +40,7 @@ pub fn handle_join(
         turn_commitment: token_hash_opt,
     });
 
-    println!("reg {:?}\nmeu {:?}", game.turn_commitment, token_hash_opt);
+    //println!("reg {:?}\nmeu {:?}", game.turn_commitment, token_hash_opt);
 
     // Prevent joining mid-game
     if game.shot_position.is_some() {
