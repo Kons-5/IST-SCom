@@ -1,5 +1,5 @@
-use crate::{rotate_player_to_back, xy_pos, Game, Player, SharedData};
-use fleetcore::{BaseJournal, CommunicationData};
+use crate::{xy_pos, Game, Player, SharedData};
+use fleetcore::{BaseJournal, CommunicationData, EncryptedToken};
 use methods::WAVE_ID;
 
 use std::{
@@ -28,25 +28,23 @@ pub fn handle_wave(
     let mut gmap = shared.gmap.lock().unwrap();
     let game = match gmap.get_mut(&data.gameid) {
         Some(g) => g,
-        None => {
-            return format!(
-                "Game {} not found\n\n\n\
-                \x20",
-                data.gameid
-            );
-        }
+        None => return format!("Game {} not found", data.gameid),
     };
 
-    // Confirm player exists
-    let player = match game.pmap.get(&data.fleet) {
+    // Validate player's turn
+    if game.turn_commitment != Some(data.token_commitment) {
+        return "Invalid token: not your turn.".to_string();
+    }
+
+    // Verify if the player has reported before firing
+    if game.shot_position.is_some() {
+        return "You must report the last shot before firing.\n".to_string();
+    }
+
+    // Confirm firing player exists and is valid
+    let player = match game.pmap.get_mut(&data.fleet) {
         Some(p) => p,
-        None => {
-            return format!(
-                "Player {} not found\n\n\n\
-                \x20",
-                data.fleet
-            );
-        }
+        None => return format!("Player {} not found in game {}", data.fleet, data.gameid),
     };
 
     // Confirm public key matches
@@ -61,50 +59,34 @@ pub fn handle_wave(
             .to_string();
     }
 
-    // Validate player's turn
-    if game.next_player.as_ref() != Some(&data.fleet) {
-        // Check if this player is expected to report
-        if game.next_report.as_ref() == Some(&data.fleet) {
-            return format!(
-                "It's not {}'s turn: you must report the last shot before waving.\n\n\n\
-                \x20",
-                data.fleet
-            );
-        } else {
-            return format!(
-                "It's not {}'s turn\n\n\n\
-            \x20",
-                data.fleet
-            );
-        }
-    }
-
-    // Rotate current player to back of queue
-    rotate_player_to_back(game, &data.fleet);
-
-    // Assign next player: first in the updated queue
-    let next = game.player_order[0].clone();
-    game.next_player = Some(next.clone());
+    // Update turn order
+    let token_data: &EncryptedToken = input_data.token_data.as_ref().unwrap();
+    game.encrypted_token = Some(token_data.enc_token.clone());
+    game.turn_commitment = Some(token_data.token_hash.clone());
 
     // Build message
-    let msg = match game.next_player {
-        Some(ref next) => format!(
-            "\
-            \x20 {} waved their turn.\n\
-            \x20 ▶ Next player is {}.\n\n\n\
-            \x20",
-            data.fleet, next
-        ),
-        None => format!(
-            "\
-            \x20 {} waved their turn.\n\
-            \x20 ▶ No remaining players with active fleets.\n\n\n\
-            \x20",
-            data.fleet
-        ),
-    };
+    let recipient = input_data
+        .token_data
+        .as_ref()
+        .and_then(|t| {
+            game.pmap
+                .iter()
+                .find(|(_, p)| p.rsa_pubkey == t.pub_rsa_key)
+                .map(|(id, _)| id)
+        })
+        .cloned()
+        .unwrap_or_else(|| "(unknown recipient)".to_string());
+
+    let msg = format!(
+        "\
+        \x20 {} waved their turn.\n\
+        \x20 ▶ Token passed to: {}\n\n\n\
+        \x20",
+        data.fleet, recipient,
+    );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

@@ -11,8 +11,8 @@ use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
 
 use axum::{
-    extract::Extension,
-    response::{sse::Event, Html, IntoResponse},
+    extract::{Extension, Query},
+    response::{sse::Event, sse::Sse, Html, IntoResponse},
     routing::{get, post},
     Json, Router,
 };
@@ -22,18 +22,23 @@ use std::{
     error::Error,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
+
+use serde::{Deserialize, Serialize};
 
 mod states;
 use states::{Game, Player, SharedData};
 
 mod handlers;
-use handlers::{handle_fire, handle_join, handle_report, handle_wave, handle_win};
+use handlers::{handle_contest, handle_fire, handle_join, handle_report, handle_wave, handle_win};
 
 mod authenticate;
-use authenticate::verify_signature;
+use authenticate::{authenticate, verify_signature};
 
 use fleetcore::{Command, CommunicationData, SignedMessage};
+
+use base64::{engine::general_purpose, Engine as _};
 
 #[tokio::main]
 async fn main() {
@@ -50,6 +55,9 @@ async fn main() {
         .route("/", get(index))
         .route("/logs", get(logs))
         .route("/chain", post(smart_contract))
+        .route("/key", get(get_rsa_key))
+        .route("/players", get(get_player_list))
+        .route("/token", get(get_token_data))
         .layer(Extension(shared));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
@@ -85,44 +93,109 @@ async fn index() -> Html<&'static str> {
     )
 }
 
+#[derive(Serialize)]
+pub struct TokenData {
+    pub enc_token: String,
+    pub token_hash: [u8; 32],
+}
+
+#[axum::debug_handler]
+pub async fn get_token_data(
+    Query(params): Query<HashMap<String, String>>,
+    Extension(shared): Extension<SharedData>,
+) -> impl IntoResponse {
+    let gameid = match params.get("gameid") {
+        Some(id) => id,
+        None => return "Missing gameid".to_string().into_response(),
+    };
+
+    let gmap = shared.gmap.lock().unwrap();
+    let game = match gmap.get(gameid) {
+        Some(g) => g,
+        None => return "Game not found".to_string().into_response(),
+    };
+
+    match (&game.encrypted_token, &game.turn_commitment) {
+        (Some(enc), Some(hash)) => Json(TokenData {
+            enc_token: enc.clone(),
+            token_hash: (*hash).into(),
+        })
+        .into_response(),
+        _ => "No token available".to_string().into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct Params {
+    gameid: String,
+    fleetid: String,
+}
+
+async fn get_rsa_key(
+    Extension(shared): Extension<SharedData>,
+    Query(params): Query<Params>,
+) -> Result<String, String> {
+    let gmap = shared.gmap.lock().unwrap();
+    let game = gmap
+        .get(&params.gameid)
+        .ok_or_else(|| "Game not found".to_string())?;
+    let player = game
+        .pmap
+        .get(&params.fleetid)
+        .ok_or_else(|| "Fleet not found".to_string())?;
+
+    Ok(base64::engine::general_purpose::STANDARD.encode(&player.rsa_pubkey))
+}
+
+#[derive(Deserialize)]
+struct GameQuery {
+    gameid: String,
+}
+
+async fn get_player_list(
+    Extension(shared): Extension<SharedData>,
+    Query(query): Query<GameQuery>,
+) -> Json<Vec<String>> {
+    let gmap = shared.gmap.lock().unwrap();
+    let game = match gmap.get(&query.gameid) {
+        Some(g) => g,
+        None => return Json(vec![]),
+    };
+
+    Json(game.pmap.keys().cloned().collect())
+}
+
 // Handler to manage SSE connections
 #[axum::debug_handler]
 async fn logs(Extension(shared): Extension<SharedData>) -> impl IntoResponse {
     let rx = BroadcastStream::new(shared.tx.subscribe());
-    let stream = rx.filter_map(|result| async move {
-        match result {
-            Ok(msg) => Some(Ok(Event::default().data(msg))),
-            Err(_) => Some(Err(Box::<dyn Error + Send + Sync>::from("Error"))),
-        }
+
+    let stream = rx.map(|result| match result {
+        Ok(msg) => Ok(Event::default().data(msg)),
+        Err(_) => Err(Box::<dyn Error + Send + Sync>::from("Error")),
     });
 
-    axum::response::sse::Sse::new(stream)
+    Sse::new(stream)
 }
 
 async fn smart_contract(
     Extension(shared): Extension<SharedData>,
     Json(signed): Json<SignedMessage<CommunicationData>>,
 ) -> String {
-    let input_data = &signed.payload;
-    let signature = &signed.signature;
-    let public_key = &signed.public_key;
-
-    let payload_bytes = match serde_json::to_vec(input_data) {
-        Ok(bytes) => bytes,
-        Err(_) => return "Failed to serialize payload".to_string(),
-    };
-
-    if !verify_signature(&payload_bytes, signature, public_key) {
-        return "Invalid signature".to_string();
-        // o q fazer mais neste caso?
+    if let Err(err) = authenticate(&shared, &signed) {
+        return err;
     }
 
-    match input_data.cmd {
-        Command::Join => handle_join(&shared, input_data, public_key),
-        Command::Fire => handle_fire(&shared, input_data, public_key),
-        Command::Report => handle_report(&shared, input_data, public_key),
-        Command::Wave => handle_wave(&shared, input_data, public_key),
-        Command::Win => handle_win(&shared, input_data, public_key),
+    let input = &signed.payload;
+    let pk = &signed.public_key;
+
+    match input.cmd {
+        Command::Join => handle_join(&shared, input, pk),
+        Command::Fire => handle_fire(&shared, input, pk),
+        Command::Report => handle_report(&shared, input, pk),
+        Command::Wave => handle_wave(&shared, input, pk),
+        Command::Win => handle_win(&shared, input, pk),
+        Command::Contest => handle_contest(&shared, input, pk),
     }
 }
 
@@ -130,16 +203,13 @@ async fn smart_contract(
 // AUXILIARY FUNCTIONS
 // -----------------------------------------------------------------------------
 
-fn xy_pos(pos: u8) -> String {
-    let x = pos % 10;
-    let y = pos / 10;
-    format!("{}{}", (x + 65) as char, y)
-}
-
-/// Moves the current player to the back of the queue, without updating next_player.
-fn rotate_player_to_back(game: &mut Game, player_id: &str) {
-    if let Some(pos) = game.player_order.iter().position(|id| id == player_id) {
-        let who = game.player_order.remove(pos);
-        game.player_order.push(who);
+fn xy_pos(pos: Option<u8>) -> String {
+    match pos {
+        Some(p) => {
+            let x = p % 10;
+            let y = p / 10;
+            format!("{}{}", (x + 65) as char, y)
+        }
+        None => "None".to_string(),
     }
 }

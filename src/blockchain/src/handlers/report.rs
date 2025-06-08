@@ -1,5 +1,5 @@
 use crate::{xy_pos, Game, Player, SharedData};
-use fleetcore::{CommunicationData, ReportJournal, SignedMessage};
+use fleetcore::{CommunicationData, EncryptedToken, ReportJournal, SignedMessage};
 use methods::REPORT_ID;
 
 use std::{
@@ -22,14 +22,22 @@ pub fn handle_report(
         return "Could not verify receipt".to_string();
     }
 
+    // Decode journal
     let data: ReportJournal = input_data.receipt.journal.decode().unwrap();
 
+    // Confirm game exists
     let mut gmap = shared.gmap.lock().unwrap();
     let game = match gmap.get_mut(&data.gameid) {
         Some(g) => g,
         None => return format!("Game {} not found", data.gameid),
     };
 
+    // Validate player's turn
+    if game.turn_commitment != Some(data.token_commitment) {
+        return "Invalid token: not your turn.".to_string();
+    }
+
+    // Confirm firing player exists and is valid
     let player = match game.pmap.get_mut(&data.fleet) {
         Some(p) => p,
         None => return format!("Player {} not found in game {}", data.fleet, data.gameid),
@@ -40,16 +48,11 @@ pub fn handle_report(
         return format!("Public key mismatch for player {}", data.fleet);
     }
 
-    // Ensure this player is the one expected to report
-    if game.next_report.as_ref() != Some(&data.fleet) {
-        return format!("It is not {}'s turn to report", data.fleet);
-    }
-
     // Make sure the shot advertised by the player is correct
-    if game.shot_position != data.pos {
+    if game.shot_position != Some(data.pos) {
         return format!(
             "Shot {} is not the shot fired by adversary ({})",
-            xy_pos(data.pos),
+            xy_pos(Some(data.pos)),
             xy_pos(game.shot_position)
         );
     }
@@ -63,8 +66,10 @@ pub fn handle_report(
     player.current_state = data.next_board.clone();
 
     // Update turn order
-    game.next_report = None;
-    game.next_player = Some(data.fleet.clone()); // This player can now fire
+    let token_data: &EncryptedToken = input_data.token_data.as_ref().unwrap();
+    game.encrypted_token = Some(token_data.enc_token.clone());
+    game.turn_commitment = Some(token_data.token_hash.clone());
+    game.shot_position = None;
 
     // Emit a formatted message
     let msg = format!(
@@ -76,11 +81,12 @@ pub fn handle_report(
         \x20",
         data.fleet,
         data.report,
-        xy_pos(data.pos),
+        xy_pos(Some(data.pos)),
         data.fleet,
     );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

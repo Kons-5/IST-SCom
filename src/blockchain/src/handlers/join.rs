@@ -1,19 +1,14 @@
 use crate::{xy_pos, Game, Player, SharedData};
-use fleetcore::{BaseJournal, CommunicationData, SignedMessage};
+use fleetcore::{BaseJournal, CommunicationData, EncryptedToken, SignedMessage};
 use methods::JOIN_ID;
-
-use std::{
-    collections::HashMap,
-    error::Error,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, sync::Mutex};
 
 pub fn handle_join(
     shared: &SharedData,
     input_data: &CommunicationData,
     public_key: &[u8],
 ) -> String {
+    // Verify proof
     if input_data.receipt.verify(JOIN_ID).is_err() {
         shared
             .tx
@@ -21,53 +16,75 @@ pub fn handle_join(
             .unwrap();
         return "Could not verify receipt".to_string();
     }
+
     // Decode journal
     let data: BaseJournal = input_data.receipt.journal.decode().unwrap();
 
-    // Access game state
-    // Look up the game by its ID. If it already exists, get a mutable reference to it.
-    // If it doesn't exist, insert a new Game struct
+    // Extract token info (if present)
+    let (token_hash_opt, enc_token_opt, rsa_pubkey_opt) = match &input_data.token_data {
+        Some(t) => (
+            Some(t.token_hash),
+            Some(t.enc_token.clone()),
+            Some(t.pub_rsa_key.clone()),
+        ),
+        None => (None, None, None),
+    };
+
+    // Access or initialize game. The 1st player joining has the turn.
     let mut gmap = shared.gmap.lock().unwrap();
-    let game = gmap.entry(data.gameid.clone()).or_insert(Game {
+    let game = gmap.entry(data.gameid.clone()).or_insert_with(|| Game {
         pmap: HashMap::new(),
-        shot_position: 100,
-        player_order: vec![data.fleet.clone()],
-        next_turn_commitment: input_data.r_hash,        // First player sets turn commitment
-        next_report: None,                              // To be set with turn commitment when player shoots
-        encrypted_token: input_data.enc_token.clone(),  // Store encrypted r
+        shot_position: None,
+        pending_win: None,
+        encrypted_token: enc_token_opt.clone(),
+        turn_commitment: token_hash_opt,
     });
 
-    // Handle duplicate player
+    println!("reg {:?}\nmeu {:?}", game.turn_commitment, token_hash_opt);
+
+    // Prevent joining mid-game
+    if game.shot_position.is_some() {
+        return format!(
+            "Trying to join a game that's already ended! Game ID: {}, Players: [{}]",
+            data.gameid,
+            game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
+        );
+    }
+
+    // Prevent joining game flagged as won
+    if game.pending_win.is_some() {
+        return format!("Trying to join a game that's already ended!",);
+    }
+
+    // Check for duplicate players
     if let Some(existing_player) = game.pmap.get(&data.fleet) {
         if existing_player.public_key != public_key {
             return format!(
-                "Public key mismatch for player {} in game {}",
+                "Public key mismatch for player \"{}\" in game \"{}\"",
                 data.fleet, data.gameid
             );
         }
 
         return format!(
-            "Player {} is already in game {}. Current players: [{}]\n\n\n\
-                \x20",
+            "Player \"{}\" is already in game \"{}\".\nCurrent players: [{}]",
             data.fleet,
             data.gameid,
             game.pmap.keys().cloned().collect::<Vec<_>>().join(", ")
         );
     }
 
-    // Register the player in the game under their fleet ID (if not duplicate)
-    let rsa_pubkey = input_data.pub_rsa_pubkey.clone();
+    // Add player to the game
     game.pmap.insert(
         data.fleet.clone(),
         Player {
             name: data.fleet.clone(),
             current_state: data.board.clone(),
             public_key: public_key.to_vec(),
-            rsa_pubkey: rsa_pubkey.to_vec(),
+            rsa_pubkey: rsa_pubkey_opt.unwrap_or_default(),
         },
     );
 
-    // Create success message
+    // Format success message
     let players: Vec<String> = game.pmap.keys().cloned().collect();
     let msg = format!(
         "\
@@ -77,8 +94,7 @@ pub fn handle_join(
         \x20 ▶ Commitment Hash: {:?}\n\n\
         \x20 Player \"{}\" joined game \"{}\".\n\
         \x20 ▶ Total players: {}\n\
-        \x20 ▶ Current players: [{}]\n\n\n\
-        \x20",
+        \x20 ▶ Current players: [{}]\n\n",
         data.gameid,
         data.fleet,
         data.board,
@@ -87,9 +103,7 @@ pub fn handle_join(
         players.len(),
         players.join(", ")
     );
-
-    let html_msg = msg.replace('\n', "<br>");
-    shared.tx.send(html_msg.clone()).unwrap();
+    shared.tx.send(msg.replace('\n', "<br>")).unwrap();
 
     "OK".to_string()
 }

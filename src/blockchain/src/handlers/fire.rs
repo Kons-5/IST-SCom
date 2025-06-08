@@ -1,5 +1,5 @@
-use crate::{rotate_player_to_back, xy_pos, Game, Player, SharedData};
-use fleetcore::{CommunicationData, FireJournal};
+use crate::{xy_pos, Game, Player, SharedData};
+use fleetcore::{CommunicationData, EncryptedToken, FireJournal};
 use methods::FIRE_ID;
 
 use std::{
@@ -29,25 +29,25 @@ pub fn handle_fire(
     let mut gmap = shared.gmap.lock().unwrap();
     let game = match gmap.get_mut(&data.gameid) {
         Some(g) => g,
-        None => {
-            return format!(
-                "Game {} not found\n\n\n\
-         \x20",
-                data.gameid
-            )
-        }
+        None => return format!("Game {} not found\n", data.gameid),
     };
+
+    // Validate player's turn
+    println!("{:?} and {:?}", game.turn_commitment, data.token_commitment);
+
+    if game.turn_commitment != Some(data.token_commitment) {
+        return "Invalid token: not your turn.\n".to_string();
+    }
+
+    // Verify if the player has reported before firing
+    if game.shot_position.is_some() {
+        return "You must report the last shot before firing.\n".to_string();
+    }
 
     // Confirm firing player exists and is valid
     let player = match game.pmap.get(&data.fleet) {
         Some(p) => p,
-        None => {
-            return format!(
-                "Player {} not found\n\n\n\
-         \x20",
-                data.fleet
-            )
-        }
+        None => return format!("Player {} not found\n", data.fleet),
     };
 
     // Confirm public key matches
@@ -62,24 +62,6 @@ pub fn handle_fire(
             .to_string();
     }
 
-    // Validate player's turn
-    if game.next_player.as_ref() != Some(&data.fleet) {
-        // Check if this player is expected to report
-        if game.next_report.as_ref() == Some(&data.fleet) {
-            return format!(
-                "It's not {}'s turn to fire: you must report the last shot before firing.\n\n\n\
-                \x20",
-                data.fleet
-            );
-        } else {
-            return format!(
-                "It's not {}'s turn to fire\n\n\n\
-            \x20",
-                data.fleet
-            );
-        }
-    }
-
     // Validate target's existence
     if !game.pmap.contains_key(&data.target) {
         return format!(
@@ -89,13 +71,11 @@ pub fn handle_fire(
         );
     }
 
-    // Update game state
-    game.next_player = None;
-    game.next_report = Some(data.target.clone());
-    game.shot_position = data.pos.clone();
-
-    // Rotate current player to back of queue
-    rotate_player_to_back(game, &data.fleet);
+    // Update game state with new token
+    let token_data: &EncryptedToken = input_data.token_data.as_ref().unwrap();
+    game.encrypted_token = Some(token_data.enc_token.clone());
+    game.turn_commitment = Some(token_data.token_hash.clone());
+    game.shot_position = Some(data.pos);
 
     let msg = format!(
         "\
@@ -103,12 +83,13 @@ pub fn handle_fire(
         \x20 ▶ {} fired at position {} targeting {} in game {}\n\n\n\
         \x20",
         data.fleet,
-        xy_pos(data.pos),
+        xy_pos(Some(data.pos)),
         data.target,
         data.gameid
     );
 
     let html_msg = msg.replace('\n', "<br>");
     shared.tx.send(html_msg.clone()).unwrap();
-    html_msg
+
+    "OK".to_string()
 }

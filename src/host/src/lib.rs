@@ -6,19 +6,21 @@
 use percent_encoding;
 use serde::{Deserialize, Serialize};
 
-use fleetcore::{Command, CommunicationData, SignedMessage};
+use fleetcore::{Command, CommunicationData, EncryptedToken, SignedMessage};
 
 mod game_actions;
-pub use game_actions::{fire, join_game, report, wave, win};
+pub use game_actions::{contest, fire, join_game, report, wave, win};
 
 mod signing;
-use signing::{import_key_base64, sign_message};
+use signing::{import_key_base64, sign_payload};
 
 mod token_gen;
 use token_gen::prepare_turn_token;
 
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use std::{error::Error, string};
+
+use reqwest::Client;
 
 #[derive(Deserialize)]
 pub struct FormData {
@@ -64,65 +66,64 @@ fn generate_receipt<T: serde::Serialize>(input: &T, elf: &[u8]) -> Result<Receip
     Ok(session.receipt)
 }
 
-async fn send_receipt(
+/// Sends a signed CommunicationData payload to the blockchain, optionally encrypting a turn token.
+pub async fn send_receipt(
     action: Command,
     receipt: Receipt,
     idata: &FormData,
     recipient_rsa_pubkey: Option<String>,
 ) -> String {
-    let d_pubkey = idata.d_pubkey.clone().unwrap();
-    let d_privkey = idata.d_privkey.clone().unwrap();
+    // Encrypt token and compute hash if recipient public RSA key is provided
+    let turn_token_b64 = idata.turn_token.as_deref().unwrap_or_default(); // Retrieve token
 
-    let pk = import_key_base64(&d_pubkey);
-    let sk = import_key_base64(&d_privkey);
+    let mut enc_token_opt = None;
+    let mut token_hash_opt = None;
+    let mut recipient_pubkey_bytes = Vec::new();
 
-    // REPLACE HERE THIS LOGIC
-    let (enc_token, r_hash) = match recipient_rsa_pubkey {
-        Some(ref pubkey) => prepare_turn_token(pubkey).unwrap_or((String::new(), [0u8; 32])),
-        None => (String::new(), [0u8; 32]),
+    if let Some(pubkey_b64) = &recipient_rsa_pubkey {
+        if !turn_token_b64.is_empty() {
+            if let Some((enc_token, token_hash)) = prepare_turn_token(pubkey_b64, turn_token_b64) {
+                enc_token_opt = Some(enc_token);
+                token_hash_opt = Some(token_hash);
+                recipient_pubkey_bytes = import_key_base64(pubkey_b64);
+            }
+        }
+    }
+
+    // Construct payload
+    let token_data = match (enc_token_opt, token_hash_opt) {
+        (Some(enc_token), Some(token_hash)) => Some(EncryptedToken {
+            enc_token: enc_token,
+            token_hash: token_hash.into(),
+            pub_rsa_key: recipient_pubkey_bytes,
+        }),
+        _ => None,
     };
-
-    // RETRIEVES THE TOKEN GENERATED EACH TIME A BUTTON IS PRESSED IN THE UI
-    let turn_token = idata.turn_token.clone().unwrap_or_default();
 
     let payload = CommunicationData {
         cmd: action,
         receipt,
-        enc_token: if enc_token.is_empty() {
-            None
-        } else {
-            Some(enc_token)
-        },
-        r_hash: if r_hash == [0u8; 32] {
-            None
-        } else {
-            Some(r_hash)
-        },
-        pub_rsa_key: import_key_base64(recipient_rsa_pubkey.as_deref().unwrap_or("")),
+        token_data,
     };
 
-    let payload_bytes = match serde_json::to_vec(&payload) {
-        Ok(b) => b,
-        Err(_) => return "Failed to serialize payload".to_string(),
+    // Retrieve submitter's keys and sign payload
+    let d_pubkey = idata.d_pubkey.as_deref().unwrap_or_default();
+    let d_privkey = idata.d_privkey.as_deref().unwrap_or_default();
+
+    let signed = match sign_payload(payload, d_pubkey, d_privkey) {
+        Some(signed) => signed,
+        None => return "Failed to sign payload".to_string(),
     };
 
-    let signature = sign_message(&payload_bytes, &sk);
-
-    let signed = SignedMessage {
-        payload,
-        signature,
-        public_key: pk,
-    };
-
-    let client = reqwest::Client::new();
-    let res = client
+    // Send to blockchain server
+    let client = Client::new();
+    match client
         .post("http://chain0:3001/chain")
         .json(&signed)
         .send()
-        .await;
-
-    match res {
-        Ok(response) => response
+        .await
+    {
+        Ok(resp) => resp
             .text()
             .await
             .unwrap_or_else(|_| "Failed to read response".to_string()),
@@ -178,16 +179,6 @@ pub fn unmarshal_data(idata: &FormData) -> Result<(String, String, Vec<u8>, Stri
                         .collect::<Result<Vec<u8>, String>>()
                 })
         })??;
-
-    let rsa_pubkey = match &idata.rsa_pubkey {
-        Some(k) if !k.is_empty() => k.clone(),
-        _ => return Err("Missing RSA public key".to_string()),
-    };
-
-    let rsa_privkey = match &idata.rsa_privkey {
-        Some(k) if !k.is_empty() => k.clone(),
-        _ => return Err("Missing RSA public key".to_string()),
-    };
 
     Ok((gameid, fleetid, board, random))
 }

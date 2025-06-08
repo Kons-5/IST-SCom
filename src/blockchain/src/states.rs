@@ -2,6 +2,7 @@ use risc0_zkvm::Digest;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 use tokio::sync::broadcast;
 
@@ -13,18 +14,24 @@ pub struct SharedData {
 }
 
 pub struct Player {
-    pub name: String,               // Player ID
-    pub current_state: Digest,      // Commitment hash
-    pub public_key: Vec<u8>,        // Player public key
-    pub rsa_pubkey: Vec<u8>,
+    pub name: String,          // Player ID
+    pub current_state: Digest, // Commitment hash
+    pub public_key: Vec<u8>,   // Dilithium public key
+    pub rsa_pubkey: Vec<u8>,   // Token RSA public key
+}
+
+pub struct PendingWin {
+    pub claimant: String, // Fleet ID that claimed win
+    pub board: Digest,    // Committed board hash
+    pub time: Instant,    // Time when claim was made
 }
 
 pub struct Game {
-    pub pmap: HashMap<String, Player>, // All players in the game
-    pub shot_position: u8,             // Last shot position
-    pub player_order: Vec<String>,     // Player order
+    pub pmap: HashMap<String, Player>,   // All players in the game
+    pub shot_position: Option<u8>,       // Last shot position
+    pub pending_win: Option<PendingWin>, // If someone has claimed victory
 
-    pub next_turn_commitment: Option<[u8; 32]>,
-    pub next_report: Option<String>,   // player expected to report
-    pub encrypted_token: Option<String>
+    // Token authentication
+    pub turn_commitment: Option<Digest>,
+    pub encrypted_token: Option<String>,
 }

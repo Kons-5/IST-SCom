@@ -16,6 +16,7 @@ pub struct BaseInputs {
     pub fleet: String,
     pub board: Vec<u8>,
     pub random: String,
+    pub token_auth: Option<TokenAuth>,
 }
 
 /// Input to zkVM programs sent by the rust code for input on the methods fire and report
@@ -28,6 +29,14 @@ pub struct FireInputs {
     pub random: String,
     pub target: String,
     pub pos: u8,
+    pub token_auth: Option<TokenAuth>,
+}
+
+/// Struct that contains the necessary fields to prove token ownership
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TokenAuth {
+    pub token: Vec<u8>,        // Decrypted token
+    pub expected_hash: Digest, // Hash previously committed
 }
 
 // -----------------------------------------------------------------------------
@@ -42,6 +51,7 @@ pub enum Command {
     Report,
     Wave,
     Win,
+    Contest,
 }
 
 /// Struct used to specify the packet sent from the client to the blockchain server
@@ -49,9 +59,13 @@ pub enum Command {
 pub struct CommunicationData {
     pub cmd: Command,
     pub receipt: Receipt,
+    pub token_data: Option<EncryptedToken>,
+}
 
-    pub enc_token: Option<String>,
-    pub r_hash: Option<[u8; 32]>,
+#[derive(Deserialize, Serialize)]
+pub struct EncryptedToken {
+    pub enc_token: String,
+    pub token_hash: Digest,
     pub pub_rsa_key: Vec<u8>,
 }
 
@@ -73,6 +87,7 @@ pub struct BaseJournal {
     pub gameid: String,
     pub fleet: String,
     pub board: Digest,
+    pub token_commitment: Digest,
 }
 
 /// Struct used to specify the output journal for fire method
@@ -83,6 +98,7 @@ pub struct FireJournal {
     pub board: Digest,
     pub target: String,
     pub pos: u8,
+    pub token_commitment: Digest,
 }
 
 /// Struct used to specify the output journal for report method
@@ -94,4 +110,5 @@ pub struct ReportJournal {
     pub pos: u8,
     pub board: Digest,
     pub next_board: Digest,
+    pub token_commitment: Digest,
 }

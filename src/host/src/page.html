@@ -221,6 +221,7 @@
           sessionStorage.getItem("rsa_privkey");
 
         if (!hasKeys) {
+          sessionStorage.clear();
           const res = await fetch("/generate_keys");
           const { d_pubkey, d_privkey, rsa_pubkey, rsa_privkey } =
             await res.json();
@@ -242,10 +243,10 @@
       <form action="/submit" method="post" onsubmit="submitForm(event)">
         <input type="hidden" name="board" id="board" />
         <input type="hidden" name="shots" id="shots" />
-        <input type="hidden" name="d_privkey" />
-        <input type="hidden" name="d_pubkey" />
-        <input type="hidden" name="rsa_pubkey" />
-        <input type="hidden" name="rsa_privkey" />
+        <input type="hidden" name="d_privkey" id="d_privkey" />
+        <input type="hidden" name="d_pubkey" id="d_pubkey" />
+        <input type="hidden" name="rsa_pubkey" id="rsa_pubkey" />
+        <input type="hidden" name="rsa_privkey" id="rsa_privkey" />
         <input type="hidden" name="turn_token" id="turn_token" />
         <input type="hidden" name="random" id="random" value="{random}" />
         <label>
@@ -304,6 +305,11 @@
         <label>
           <button type="submit" class="button-10" name="button" value="Win">
             Win
+          </button>
+        </label>
+        <label>
+          <button type="submit" class="button-10" name="button" value="Contest">
+            Contest
           </button>
         </label>
       </form>

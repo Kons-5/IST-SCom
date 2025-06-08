@@ -1,26 +1,27 @@
+// methods/guest/src/bin/contest.rs
+
 use fleetcore::{BaseInputs, BaseJournal};
 use proofs::hash_board;
-use proofs::validate::validate_battleship_board;
 use risc0_zkvm::guest::env;
 use risc0_zkvm::sha::Digest;
 
 fn main() {
-    // Read input from host
     let input: BaseInputs = env::read();
 
-    // Validate fleet configuration
-    if !validate_battleship_board(&input.board) {
-        panic!("Invalid fleet configuration");
-    }
+    // Check that the fleet still has ships (i.e., contest is valid)
+    assert!(
+        !input.board.is_empty(),
+        "You cannot contest with an empty fleet"
+    );
 
     // Compute commitment: H(nonce || board)
-    let board_hash = hash_board(&input.board, &input.random);
+    let digest = hash_board(&input.board, &input.random);
 
     // Commit public output
     let output = BaseJournal {
         gameid: input.gameid,
         fleet: input.fleet,
-        board: board_hash,
+        board: digest,
         token_commitment: Digest::default(), // null
     };
 

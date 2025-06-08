@@ -5,8 +5,9 @@
 
 use fleetcore::{FireInputs, ReportJournal};
 use proofs::hash_board;
-
 use risc0_zkvm::guest::env;
+use risc0_zkvm::sha::Digest;
+use sha2::{Digest as ShaDigest, Sha256};
 
 /// Entry point for the zkVM guest program.
 ///
@@ -33,23 +34,35 @@ fn main() {
 /// # Panics
 /// - If the position is found in the board (which contradicts a "Miss" report)
 fn handle_miss(input: &FireInputs) -> ReportJournal {
+    // Validate token ownership
+    let token_hash: Option<Digest> = input.token_auth.as_ref().map(|auth| {
+        let hash = Sha256::digest(&auth.token);
+        let digest = Digest::try_from(hash.as_slice()).expect("Invalid hash size");
+        assert_eq!(
+            &digest, &auth.expected_hash,
+            "Token mismatch: you do not own the turn"
+        );
+        digest
+    });
+
     // Position must not be present in the board
     assert!(
         !input.board.contains(&input.pos),
-        "Claimed Miss, but target position was a hit"
+        "Claimed miss, but target position was a hit"
     );
 
     // Hash board once
     // Same for both original board and updated board
-    let hash = hash_board(&input.board, &input.random);
+    let board_hash = hash_board(&input.board, &input.random);
 
     ReportJournal {
         gameid: input.gameid.clone(),
         fleet: input.fleet.clone(),
         report: input.target.clone(),
         pos: input.pos,
-        board: hash.clone(),
-        next_board: hash,
+        board: board_hash.clone(),
+        next_board: board_hash,
+        token_commitment: token_hash.expect("Token hash missing"),
     }
 }
 
@@ -61,10 +74,21 @@ fn handle_miss(input: &FireInputs) -> ReportJournal {
 /// # Panics
 /// - If the position is still present in the updated board (shot not applied)
 fn handle_hit(input: &FireInputs) -> ReportJournal {
-    // Position must no longe be present in the board
+    // Validate token ownership
+    let token_hash: Option<Digest> = input.token_auth.as_ref().map(|auth| {
+        let hash = Sha256::digest(&auth.token);
+        let digest = Digest::try_from(hash.as_slice()).expect("Invalid hash size");
+        assert_eq!(
+            &digest, &auth.expected_hash,
+            "Token mismatch: you do not own the turn"
+        );
+        digest
+    });
+
+    // Position must no longer be present in the board
     assert!(
-        !input.board.contains(&input.pos),
-        "Claimed Hit, but position still in updated board"
+        input.board.contains(&input.pos),
+        "Claimed hit, but position still in updated board"
     );
 
     // Reconstruct original board
@@ -87,5 +111,6 @@ fn handle_hit(input: &FireInputs) -> ReportJournal {
         pos: input.pos,
         board: board_hash,
         next_board: next_board_hash,
+        token_commitment: token_hash.expect("Token hash missing"),
     }
 }
