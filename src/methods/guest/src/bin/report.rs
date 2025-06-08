@@ -87,8 +87,8 @@ fn handle_hit(input: &FireInputs) -> ReportJournal {
 
     // Position must no longer be present in the board
     assert!(
-        input.board.contains(&input.pos),
-        "Claimed hit, but position still in updated board"
+        !input.board.contains(&input.pos),
+        "Claimed hit, but position still in updated board",
     );
 
     // Reconstruct original board

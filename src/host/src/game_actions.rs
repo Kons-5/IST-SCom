@@ -47,11 +47,6 @@ pub async fn join_game(idata: FormData) -> String {
         _ => return "Missing RSA public key".to_string(),
     };
 
-    println!(
-        "{:?}\n {:?}\n {:?}\n\n",
-        idata.fleetid, idata.rsa_pubkey, idata.rsa_privkey,
-    );
-
     // Send the receipt
     send_receipt(Command::Join, receipt, &idata, Some(rsa_pubkey)).await
 }
@@ -61,11 +56,6 @@ pub async fn fire(idata: FormData) -> String {
         Ok(values) => values,
         Err(err) => return err,
     };
-
-    println!(
-        "{:?}\n {:?}\n {:?}\n\n",
-        idata.fleetid, idata.rsa_pubkey, idata.rsa_privkey,
-    );
 
     let gameid_clone = gameid.clone();
     let targetfleet_clone = targetfleet.clone();
@@ -258,11 +248,6 @@ async fn build_token_auth(gameid: &str, idata: &FormData) -> Result<TokenAuth, S
 
     let digest = Digest::try_from(token_data.token_hash.as_slice())
         .map_err(|_| "Invalid token hash length")?;
-
-    println!(
-        "DENTRO!!\n{:?}\n {:?}\n {:?}\n{:?}\n\n",
-        idata.fleetid, idata.rsa_pubkey, idata.rsa_privkey, decrypted_token
-    );
 
     Ok(TokenAuth {
         token: decrypted_token,
