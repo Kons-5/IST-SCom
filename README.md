@@ -1,6 +1,11 @@
-## Project Overview
+# [IST-SCOM: Multiparty Battleship Game](docs/Project-Description.pdf)
+<img width="1065" height="664" alt="image" src="https://github.com/user-attachments/assets/80e66256-7fa8-46c2-a1af-6c0e8008ad49" />
 
-## Project Implementation Extras
+## Project Overview
+This project implements a privacy-preserving, multiplayer variant of the Battleship game using zkSNARKs (Zero-Knowledge Succinct Non-interactive Arguments of Knowledge) to enforce the rules without relying on a third party, built on the RISC Zero architecture, a zero-knowledge verifiable general computing platform. **The goal is to ensure that all players follow the game’s logic**, such as placing valid ship configurations, reporting shot outcomes truthfully, and winning only when conditions are satisfied, **while keeping sensitive information** (i.e., fleet configuration) **private throughout the game**. 
+
+A more thorough description of the project aswell as the implementation can be found in the [docs directory](docs).
+
 ## **Directory Structure**
 This project follows a modular structure inspired by the [RISC Zero Rust Starter Template](https://github.com/risc0/risc0), but separates each logical component into its own crate under `src/`. Each subdirectory (e.g. `host`, `blockchain`, `fleetcore`, `methods/guest`) contains its own `Cargo.toml` and `src/`.
 
