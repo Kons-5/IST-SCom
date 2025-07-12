@@ -1,4 +1,6 @@
+## Project Overview
 
+## Project Implementation Extras
 ## **Directory Structure**
 This project follows a modular structure inspired by the [RISC Zero Rust Starter Template](https://github.com/risc0/risc0), but separates each logical component into its own crate under `src/`. Each subdirectory (e.g. `host`, `blockchain`, `fleetcore`, `methods/guest`) contains its own `Cargo.toml` and `src/`.
 
