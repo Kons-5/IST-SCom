@@ -34,9 +34,12 @@ pub fn handle_win(
         None => return format!("Game {} not found\n", data.gameid),
     };
 
-    // Verify if the player has reported before firing
-    if game.shot_position.is_some() {
-        return "You must report the last shot before firing.\n".to_string();
+    // Only check shot_position if turn token is from the shot player
+    if game.turn_commitment == Some(data.token_commitment) {
+        // Verify if the player has reported before firing
+        if game.shot_position.is_some() {
+            return "You must report the last shot before firing.\n".to_string();
+        }
     }
 
     // Confirm firing player exists and is valid

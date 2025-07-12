@@ -32,9 +32,6 @@ pub fn handle_fire(
         None => return format!("Game {} not found\n", data.gameid),
     };
 
-    // Validate player's turn
-    println!("{:?} and {:?}", game.turn_commitment, data.token_commitment);
-
     if game.turn_commitment != Some(data.token_commitment) {
         return "Invalid token: not your turn.\n".to_string();
     }

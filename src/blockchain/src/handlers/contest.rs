@@ -25,11 +25,6 @@ pub fn handle_contest(
         None => return format!("Game {} not found\n", data.gameid),
     };
 
-    // Verify if the player has reported before firing
-    if game.shot_position.is_some() {
-        return "You must report the last shot before firing.\n".to_string();
-    }
-
     // Confirm firing player exists and is valid
     let player = match game.pmap.get(&data.fleet) {
         Some(p) => p,
